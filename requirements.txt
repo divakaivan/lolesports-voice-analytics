@@ -1,0 +1,14 @@
+# Astro Runtime includes the following pre-installed providers packages: https://www.astronomer.io/docs/astro/runtime-image-architecture#provider-packages
+pytubefix 
+pydub 
+ffmpeg 
+pyannote.audio 
+openai-whisper
+ffmpeg-python
+apache-airflow-providers-google
+apache-airflow[google]
+beautifulsoup4 
+pandas 
+requests 
+lxml
+html5lib
