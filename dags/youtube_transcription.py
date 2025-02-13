@@ -21,8 +21,16 @@ import json
     catchup=False,
 )
 def youtube_transcription():
+
     @task
-    def download_audio():
+    def download_audio() -> dict:
+        """
+        Fetches a YouTube video from the given URL, downloads its audio as an MP4 file, 
+        and extracts chapter details including title, start time, and end time.
+
+        Returns:
+            dict: A dictionary containing the path to the downloaded audio file and chapter details.
+        """
         yt = YouTube("https://youtu.be/CwBuJgJ5b80")
         video = yt.streams.filter(only_audio=True).first()
         output_path = video.download(filename="audio.mp4")
@@ -42,7 +50,16 @@ def youtube_transcription():
         }
 
     @task
-    def split_audio(audio_info: dict):
+    def split_audio(audio_info: dict) -> list[dict]:
+        """
+        Splits the audio file into segments based on the chapter details.
+
+        Args:
+            audio_info (dict): The output of the download_audio task.
+
+        Returns:
+            list[dict]: A list of dictionaries, each containing metadata for an audio segment.
+        """
         audio = AudioSegment.from_file(audio_info["audio_path"])
         segments = []
 
@@ -101,7 +118,16 @@ def youtube_transcription():
         return segments
 
     @task(max_active_tis_per_dag=4)
-    def transcribe_segment(segment: dict):
+    def transcribe_segment(segment: dict) -> dict:
+        """
+        Uses a Whisper model to transcribe an audio segment.
+
+        Args:
+            segment (dict): A dictionary containing metadata for the audio segment.
+
+        Returns:
+            dict: The input dictionary with the 'text' key added containing the transcription.
+        """
 
         whisper_model = whisper.load_model("tiny")
         result = whisper_model.transcribe(segment['filename'])
@@ -110,9 +136,18 @@ def youtube_transcription():
         return segment
 
     @task(max_active_tis_per_dag=4)
-    def upload_to_gcs(transcription: dict):
+    def upload_to_gcs(transcription: dict) -> dict:
+        """
+        Uploads the transcribed audio segment to Google Cloud Storage.
+
+        Args:
+            transcription (dict): A dictionary containing metadata for the transcribed audio segment.
+
+        Returns:
+            dict: The input dictionary with the 'text' key added containing the transcription.
+        """
         gcs_hook = GCSHook()
-        bucket_name = "randomname1234"
+        bucket_name = "lolesports_voice_analytics_files"
         
         audio_path = f"audio/{transcription['yt_video_title']}/{transcription['filename']}"
         gcs_hook.upload(
@@ -124,7 +159,16 @@ def youtube_transcription():
         return transcription
 
     @task
-    def upload_full_transcription_to_gcs(transcriptions: list):
+    def upload_full_transcription_to_gcs(transcriptions: list[dict]) -> str:
+        """
+        Uploads the complete transcription to Google Cloud Storage
+
+        Args:
+            transcriptions (list[dict]): A list of dictionaries containing metadata for the transcribed audio segments.
+
+        Returns:
+            str: The YouTube video title used as the filename for the complete transcription.
+        """
         # transcriptions = list(transcriptions)
         # take yt video name from 1st transcription
         yt_video_title = transcriptions[0]['yt_video_title'].strip()
@@ -135,21 +179,19 @@ def youtube_transcription():
         
         gcs_hook = GCSHook()
         gcs_hook.upload(
-            bucket_name="randomname1234",
+            bucket_name="lolesports_voice_analytics_files",
             object_name=f"transcriptions/{yt_video_title}/complete_transcription.json",
             filename="complete_transcription.json"
         )
         return yt_video_title
 
-    @task
-    def prepare_segments(segments: list):
-        return segments
-
     audio_info = download_audio()
     segments = split_audio(audio_info)
-    prepared_segments = prepare_segments(segments)
-    transcribed_segments = transcribe_segment.expand(segment=prepared_segments)
+
+    # run transcription and upload to GCS in parallel
+    transcribed_segments = transcribe_segment.expand(segment=segments)
     uploaded_segments = upload_to_gcs.expand(transcription=transcribed_segments)
+
     uploaded_transcription_path = upload_full_transcription_to_gcs(uploaded_segments)
     
     add_transcription_to_bq = GCSToBigQueryOperator(

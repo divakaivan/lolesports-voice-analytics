@@ -15,7 +15,16 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
 }
 
-def scrape_team_data(team_name):
+def scrape_team_data(team_name: str) -> str:
+    """
+    Scrapes the team members from the Fandom wiki page for the given team name.
+
+    Args:
+        team_name (str): The name of the team to scrape.
+
+    Returns:
+        str: The SQL query to insert the scraped data into BigQuery.
+    """
     url = f"https://lol.fandom.com/wiki/{team_name}"
     
     headers = {
