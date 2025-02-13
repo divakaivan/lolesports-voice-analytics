@@ -60,7 +60,7 @@ def scrape_team_data(team_name):
         ON target.player_name = source.player_name AND target.is_current
         WHEN MATCHED AND target.team != source.team THEN
             UPDATE SET 
-                effective_end_date = DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH),
+                effective_end_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY),
                 is_current = FALSE,
                 updated_at = CURRENT_TIMESTAMP()
         WHEN NOT MATCHED THEN
