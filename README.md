@@ -56,3 +56,22 @@ By leveraging these publicly available datasets, we can create AI-powered soluti
 ## **Success Metrics**
 
 TODO
+
+## **Project Spec**
+
+Include:
+
+Schemas
+Screenshots (ETL runs, quality checks, dashboards)
+DAG and data model diagrams
+Metrics and data quality checks
+
+
+## **Write Up**
+
+Document the project in a clear and concise way:
+
+Purpose of the project and expected outputs
+Dataset and technology choices, with justifications
+Steps followed and challenges faced
+Possible future enhancements
