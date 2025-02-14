@@ -32,13 +32,16 @@ from loguru import logger
     },
     schedule_interval=None,
     catchup=False,
+    params={
+        "yt_video_url": "https://www.youtube.com/watch?v=4vXsZI8y_6w",
+    },
     tags=["ivan", "youtube", "transcription"],
 )
 def youtube_transcription():
     @task
     def get_video_title():
         """Get the title of the YouTube video"""
-        yt = YouTube("https://youtu.be/CwBuJgJ5b80")
+        yt = YouTube(dag.params['yt_video_url'])
         return clean_yt_title(yt.title)
 
     @task
@@ -77,7 +80,7 @@ def youtube_transcription():
         Returns:
             dict: A dictionary containing the path to the downloaded audio file and chapter details.
         """
-        video_title = "https://youtu.be/CwBuJgJ5b80"
+        video_title = dag.params["yt_video_url"]
         logger.info(f"Downloading audio for video: {video_title}")
         yt = YouTube(video_title)
         video = yt.streams.filter(only_audio=True).first()
@@ -132,10 +135,9 @@ def youtube_transcription():
                     extract = audio[seg_start * 1000 : seg_end * 1000]
                     extract.export(filename, format="wav")
                     audio_metadata = mediainfo(filename)
-                    title = f"{title} (Part {j+1})"
                     segments.append(
                         get_segment_metadata(
-                            audio_info, title, filename, audio_metadata
+                            audio_info, f"{title} (Part {j+1})", filename, audio_metadata
                         )
                     )
                     logger.info(f"Processed segment: {title} ({seg_start}-{seg_end})")
@@ -234,7 +236,7 @@ def youtube_transcription():
             str: The YouTube video title used as the filename for the complete transcription.
         """
 
-        transcriptions = list(transcriptions)
+        transcriptions = list(transcriptions) # set(transcriptions)
         # take yt video name from 1st transcription
         yt_video_title = transcriptions[0]["yt_video_title"].strip()
         yt_video_title = "".join(e for e in yt_video_title if e.isalnum())[:15]
