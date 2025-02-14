@@ -1,12 +1,25 @@
+import os
 from airflow.decorators import dag, task
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
-from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
+from airflow.providers.google.cloud.transfers.gcs_to_bigquery import (
+    GCSToBigQueryOperator,
+)
+from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
+from airflow.exceptions import AirflowSkipException
 from datetime import datetime, timedelta
 from pytubefix import YouTube
 from pydub import AudioSegment
 from pydub.utils import mediainfo
+from include.utils import (
+    clean_yt_title,
+    get_gpt_summary,
+    get_segment_metadata,
+    get_raw_audio_bq_schema,
+)
 import whisper
 import json
+from loguru import logger
+
 
 @dag(
     dag_id="youtube_transcription_dag",
@@ -19,34 +32,72 @@ import json
     },
     schedule_interval=None,
     catchup=False,
+    tags=["ivan", "youtube", "transcription"],
 )
 def youtube_transcription():
+    @task
+    def get_video_title():
+        """Get the title of the YouTube video"""
+        yt = YouTube("https://youtu.be/CwBuJgJ5b80")
+        return clean_yt_title(yt.title)
+
+    @task
+    def check_video_exists(video_title: str) -> bool:
+        """
+        Check if the video has already been processed by querying BigQuery.
+        Returns True if video exists, False otherwise.
+        """
+
+        bq_hook = BigQueryHook()
+        sql = f"""
+            SELECT COUNT(*) as count
+            FROM lolesports_voice_analytics.raw_data_from_video
+            WHERE yt_video_title = '{video_title}'
+        """
+        logger.debug(f"Scheduling SQL: {sql}")
+        result = bq_hook.get_first(sql)
+        logger.debug(f"Result: {result}")
+        count = result[0] if result else 0
+
+        if count > 0:
+            logger.error(f"Video {video_title} has already been processed")
+            raise AirflowSkipException(
+                f"Video {video_title} has already been processed"
+            )
+
+        logger.debug(f"Video {video_title} has not been processed yet")
+        return False
 
     @task
     def download_audio() -> dict:
         """
-        Fetches a YouTube video from the given URL, downloads its audio as an MP4 file, 
+        Fetches a YouTube video from the given URL, downloads its audio as an MP4 file,
         and extracts chapter details including title, start time, and end time.
 
         Returns:
             dict: A dictionary containing the path to the downloaded audio file and chapter details.
         """
-        yt = YouTube("https://youtu.be/CwBuJgJ5b80")
+        video_title = "https://youtu.be/CwBuJgJ5b80"
+        logger.info(f"Downloading audio for video: {video_title}")
+        yt = YouTube(video_title)
         video = yt.streams.filter(only_audio=True).first()
         output_path = video.download(filename="audio.mp4")
+        logger.info(f"Downloaded full audio to {output_path}")
         return {
             "audio_path": output_path,
-            "yt_video_title": yt.title,
+            "yt_video_title": clean_yt_title(yt.title),
             "chapters": [
                 {
                     "title": chapter.title,
                     "start": chapter.start_seconds,
-                    "end": next_chapter.start_seconds if i < len(yt.chapters) - 1 else yt.length
+                    "end": next_chapter.start_seconds
+                    if i < len(yt.chapters) - 1
+                    else yt.length,
                 }
                 for i, (chapter, next_chapter) in enumerate(
                     zip(yt.chapters, yt.chapters[1:] + [None])
                 )
-            ]
+            ],
         }
 
     @task
@@ -60,6 +111,10 @@ def youtube_transcription():
         Returns:
             list[dict]: A list of dictionaries, each containing metadata for an audio segment.
         """
+
+        logger.info(
+            f"Splitting audio into segments for video: {audio_info['yt_video_title']}"
+        )
         audio = AudioSegment.from_file(audio_info["audio_path"])
         segments = []
 
@@ -77,43 +132,22 @@ def youtube_transcription():
                     extract = audio[seg_start * 1000 : seg_end * 1000]
                     extract.export(filename, format="wav")
                     audio_metadata = mediainfo(filename)
-                    segments.append({
-                        'yt_video_title': audio_info['yt_video_title'],
-                        'title': f"{title} (Part {j+1})",
-                        'filename': filename,
-                        'format_name': audio_metadata['format_name'],
-                        'sample_rate': audio_metadata['sample_rate'],
-                        'channels': audio_metadata['channels'],
-                        'bits_per_sample': audio_metadata['bits_per_sample'],
-                        'duration': audio_metadata['duration'],
-                        'bit_rate': audio_metadata['bit_rate'],
-                        'size': audio_metadata['size'],
-                        'codec_name': audio_metadata['codec_name'],
-                        'min_speakers': 5,
-                        'max_speakers': 5,
-                        'team': 'Los Ratones' # TODO: need to make dynamic to scale. Good for now
-                    })
+                    title = f"{title} (Part {j+1})"
+                    segments.append(
+                        get_segment_metadata(
+                            audio_info, title, filename, audio_metadata
+                        )
+                    )
+                    logger.info(f"Processed segment: {title} ({seg_start}-{seg_end})")
             else:
                 filename = f"{title}_{audio_info['yt_video_title']}.wav"
                 extract = audio[start_time * 1000 : end_time * 1000]
                 extract.export(filename, format="wav")
                 audio_metadata = mediainfo(filename)
-                segments.append({
-                    'yt_video_title': audio_info['yt_video_title'],
-                    'title': title,
-                    'filename': filename,
-                    'format_name': audio_metadata['format_name'],
-                    'sample_rate': audio_metadata['sample_rate'],
-                    'channels': audio_metadata['channels'],
-                    'bits_per_sample': audio_metadata['bits_per_sample'],
-                    'duration': audio_metadata['duration'],
-                    'bit_rate': audio_metadata['bit_rate'],
-                    'size': audio_metadata['size'],
-                    'codec_name': audio_metadata['codec_name'],
-                    'min_speakers': 5,
-                    'max_speakers': -1,
-                    'team': 'Los Ratones' # TODO: need to make dynamic to scale. Good for now
-                })
+                segments.append(
+                    get_segment_metadata(audio_info, title, filename, audio_metadata)
+                )
+                logger.info(f"Processed segment: {title} ({start_time}-{end_time})")
 
         return segments
 
@@ -126,12 +160,24 @@ def youtube_transcription():
             segment (dict): A dictionary containing metadata for the audio segment.
 
         Returns:
-            dict: The input dictionary with the 'text' key added containing the transcription.
+            dict: The input dictionary with extra keys added for the transcription and GPT info.
         """
 
+        logger.info(f"Transcribing segment: {segment['title']} ({segment['filename']})")
         whisper_model = whisper.load_model("tiny")
-        result = whisper_model.transcribe(segment['filename'])
-        segment['text'] = result['text']
+        result = whisper_model.transcribe(segment["filename"])
+        segment["text"] = result["text"]
+        gpt_summary_dict = get_gpt_summary(result["text"])
+        segment["gpt_clarity"] = gpt_summary_dict["clarity"]
+        segment["gpt_intensity"] = gpt_summary_dict["intensity"]
+        segment["gpt_summary"] = gpt_summary_dict["summary"]
+        logger.info(f"Transcribed segment: {segment['title']} ({segment['filename']})")
+
+        # check keys match with required_fields
+        required_fields = set(i['name'] for i in get_raw_audio_bq_schema() if i['name'] != 'ingestion_timestamp')
+        if set(segment.keys()) != required_fields:
+            logger.error(f"Missing fields in transcription: {segment}. Required fields: {required_fields}")
+            raise ValueError(f"Missing fields in transcription: {segment.keys()}. Required fields: {required_fields}")
 
         return segment
 
@@ -146,16 +192,26 @@ def youtube_transcription():
         Returns:
             dict: The input dictionary with the 'text' key added containing the transcription.
         """
+
         gcs_hook = GCSHook()
         bucket_name = "lolesports_voice_analytics_files"
-        
-        audio_path = f"audio/{transcription['yt_video_title']}/{transcription['filename']}"
+        logger.info(
+            f"Uploading segment: {transcription['title']} ({transcription['filename']}) to GCS"
+        )
+        audio_path = (
+            f"audio/{transcription['yt_video_title']}/{transcription['filename']}"
+        )
         gcs_hook.upload(
             bucket_name=bucket_name,
             object_name=audio_path,
-            filename=transcription['filename']
+            filename=transcription["filename"],
         )
-        
+        logger.info(
+            f"Uploaded segment: {transcription['title']} ({transcription['filename']}) to GCS"
+        )
+        # clean up local file
+        os.remove(transcription["filename"])
+
         return transcription
 
     @task
@@ -169,58 +225,60 @@ def youtube_transcription():
         Returns:
             str: The YouTube video title used as the filename for the complete transcription.
         """
-        # transcriptions = list(transcriptions)
+
+        transcriptions = list(transcriptions)
         # take yt video name from 1st transcription
-        yt_video_title = transcriptions[0]['yt_video_title'].strip()
+        yt_video_title = transcriptions[0]["yt_video_title"].strip()
         yt_video_title = "".join(e for e in yt_video_title if e.isalnum())[:15]
+
+        required_fields = set(i['name'] for i in get_raw_audio_bq_schema())
         with open("complete_transcription.json", "w") as f:
             for transcription in transcriptions:
+                transcription["ingestion_timestamp"] = datetime.now().isoformat()
+                if set(transcription.keys()) != required_fields:
+                    logger.error(f"Missing fields in transcription: {transcription}. Required fields: {required_fields}")
+                    raise ValueError(f"Missing fields in transcription: {transcription.keys()}. Required fields: {required_fields}")
+
                 f.write(json.dumps(transcription) + "\n")
-        
+
+        combined_transcript_path = (
+            f"transcriptions/{yt_video_title}/complete_transcription.json"
+        )
+        logger.info(
+            f"Uploading complete transcription for video: {yt_video_title} to GCS: {combined_transcript_path}"
+        )
         gcs_hook = GCSHook()
         gcs_hook.upload(
             bucket_name="lolesports_voice_analytics_files",
-            object_name=f"transcriptions/{yt_video_title}/complete_transcription.json",
-            filename="complete_transcription.json"
+            object_name=combined_transcript_path,
+            filename="complete_transcription.json",
         )
+
         return yt_video_title
+
+    add_transcription_to_bq = GCSToBigQueryOperator(
+        task_id="add_transcription_to_bq_table",
+        bucket="lolesports_voice_analytics_files",
+        source_objects=[
+            "transcriptions/{{ ti.xcom_pull(task_ids='upload_full_transcription_to_gcs') }}/complete_transcription.json"
+        ],
+        destination_project_dataset_table="dataengcamp-427114.lolesports_voice_analytics.raw_data_from_video",
+        source_format="NEWLINE_DELIMITED_JSON",
+        write_disposition="WRITE_APPEND",
+        schema_fields=get_raw_audio_bq_schema(),
+    )
+
+    video_title = get_video_title()
+    video_check = check_video_exists(video_title)
 
     audio_info = download_audio()
     segments = split_audio(audio_info)
-
-    # run transcription and upload to GCS in parallel
     transcribed_segments = transcribe_segment.expand(segment=segments)
     uploaded_segments = upload_to_gcs.expand(transcription=transcribed_segments)
-
     uploaded_transcription_path = upload_full_transcription_to_gcs(uploaded_segments)
-    
-    add_transcription_to_bq = GCSToBigQueryOperator(
-        task_id="add_transcription_to_bq_table",
-        bucket="randomname1234",
-        source_objects=["transcriptions/{{ ti.xcom_pull(task_ids='upload_full_transcription_to_gcs') }}/complete_transcription.json"],
-        destination_project_dataset_table="dataengcamp-427114.lolesports_voice_analytics.raw_data_from_video",
-        source_format="NEWLINE_DELIMITED_JSON",
-        write_disposition="WRITE_APPEND", 
-        schema_fields=[
-            {"name": "ingestion_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED", "description": "Timestamp of when the data was ingested", "defaultValueExpression": "CURRENT_TIMESTAMP()"},
-            {"name": "yt_video_title", "type": "STRING", "mode": "NULLABLE", "description": "Title of the YouTube video"},
-            {"name": "title", "type": "STRING", "mode": "NULLABLE", "description": "Title of the segment"},
-            {"name": "filename", "type": "STRING", "mode": "NULLABLE", "description": "Filename of the audio segment"},
-            {"name": "format_name", "type": "STRING", "mode": "NULLABLE", "description": "Format of the audio segment"},
-            {"name": "sample_rate", "type": "INTEGER", "mode": "NULLABLE", "description": "Sample rate of the audio segment"},
-            {"name": "channels", "type": "INTEGER", "mode": "NULLABLE", "description": "Number of channels in the audio segment"},
-            {"name": "bits_per_sample", "type": "INTEGER", "mode": "NULLABLE", "description": "Bits per sample in the audio segment"},
-            {"name": "duration", "type": "FLOAT", "mode": "NULLABLE", "description": "Duration of the audio segment"},
-            {"name": "bit_rate", "type": "INTEGER", "mode": "NULLABLE", "description": "Bit rate of the audio segment"},
-            {"name": "size", "type": "INTEGER", "mode": "NULLABLE", "description": "Size of the audio segment"},
-            {"name": "codec_name", "type": "STRING", "mode": "NULLABLE", "description": "Codec name of the audio segment"},
-            {"name": "min_speakers", "type": "INTEGER", "mode": "NULLABLE", "description": "Minimum number of speakers in the audio segment"},
-            {"name": "max_speakers", "type": "INTEGER", "mode": "NULLABLE", "description": "Maximum number of speakers in the audio segment"},
-            {"name": "team", "type": "STRING", "mode": "NULLABLE", "description": "Team name"},
-            {"name": "text", "type": "STRING", "mode": "NULLABLE", "description": "Transcription of the audio segment", "defaultValueExpression": "Empty"}
-        ]
-    )
 
+    video_title >> video_check >> audio_info >> segments
     uploaded_transcription_path >> add_transcription_to_bq
+
 
 dag = youtube_transcription()
