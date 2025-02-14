@@ -263,5 +263,7 @@ airflow-build-dockerfile*
 *.zip
 
 .astro
-include
+my-creds.json
 airflow_settings.yaml
+conceptial_model.drawio
+__init__.py

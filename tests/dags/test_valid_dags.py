@@ -56,7 +56,7 @@ def test_file_imports(rel_path, rv):
         raise Exception(f"{rel_path} failed to import with message \n {rv}")
 
 
-APPROVED_TAGS = {}
+APPROVED_TAGS = {"ivan", "lol", "team_scraping", "youtube", "transcription"}
 
 
 @pytest.mark.parametrize(

@@ -132,8 +132,25 @@ variable "raw_data_from_video_schema" {
         "type": "STRING",
         "mode": "NULLABLE",
         "description": "Transcription of the audio segment"
+    },
+    {
+        "name": "gpt_clarity",
+        "type": "INTEGER",
+        "mode": "REQUIRED",
+        "description": "Clarity rating of the audio segment"
+    },
+    {
+        "name": "gpt_intensity",
+        "type": "INTEGER",
+        "mode": "REQUIRED",
+        "description": "Intensity rating of the audio segment"
+    },
+    {
+        "name": "gpt_summary",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "description": "Summary of the audio segment"
     }
-    
 ]
 EOF
 
