@@ -8,7 +8,7 @@ However, team communication is one of the most crucial factors in competitive pl
 
 While modern speech AI models perform well on conversations with 1-3 speakers, competitive gaming presents a unique challenge due to its fast-paced, multi-speaker environment, with at least five players communicating simultaneously. Current models struggle with overlapping speech, speaker diarization, and noisy environments.
 
-By developing a structured pipeline for audio extraction and analysis, this project also serves as a template for improving speaker diarization models, contributing to the broader advancement of AI in esports communication analysis.
+By developing a structured pipeline for audio extraction and analysis, this project also serves as a template for improving speaker diarization models, contributing to the broader advancement of AI multi-speaker environments.
 
 ## **Opportunity**
 
