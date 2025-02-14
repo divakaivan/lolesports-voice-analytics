@@ -26,7 +26,7 @@ By leveraging these publicly available datasets, we can create AI-powered soluti
 
 ## **Conceptual Data Model**
 
-![conceptial-model](project_info/conceptial_model.png)
+![conceptial-model](project_info/conceptial_model.svg)
 
 - **Video:** The primary source containing metadata about game footage, including upload details and associated teams.
 - **Team:** Represents a sports team, linking to player names and the league they belong to.
