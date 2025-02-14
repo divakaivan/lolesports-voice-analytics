@@ -54,7 +54,5 @@ By leveraging these publicly available datasets, we can create AI-powered soluti
 ---
 
 ## **Success Metrics**
-- **Transcription Accuracy (%)** – Measuring how well speech-to-text models perform.
-- **Speaker Identification Rate (%)** – Accuracy of assigning speech to individual players.
-- **Communication Pattern Insights** – Quantified trends (e.g., average call frequency per minute).
-- **Fan Engagement Metrics** – Views, likes, and shares on auto-generated game summaries.
+
+TODO
