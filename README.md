@@ -1,3 +1,26 @@
+## **Project Spec**
+
+Include:
+
+Schemas
+Screenshots (ETL runs, quality checks, dashboards)
+DAG and data model diagrams
+Metrics and data quality checks
+
+## **Write Up**
+
+Document the project in a clear and concise way:
+
+Purpose of the project and expected outputs
+Dataset and technology choices, with justifications
+Steps followed and challenges faced
+Possible future enhancements
+
+
+## Criteria 3: Data Quality Checks
+
+Include at least 2 data quality checks for each data source.
+
 ## **Problem Statement**
 
 In League of Legends esports (LoLEsports), team communication remains private, with practice sessions and in-game voice comms restricted to teams and Riot Games (the game's developer). As a result, teams primarily rely on structured data—such as in-game statistics—to analyze performance, leaving a critical gap in understanding real-time communication and decision-making.
@@ -29,7 +52,7 @@ By leveraging these publicly available datasets, we can create AI-powered soluti
 ![conceptial-model](project_info/conceptial_model.svg)
 
 - **Audio:** Extracted from videos, storing technical properties and linked to game transcriptions for further analysis.
-- **Game Transcription:** AI-generated text derived from audio, including summaries, clarity levels, and hype metrics.
+- **Game Transcription:** Includes AI-generated text derived from audio, summaries, clarity levels, and hype metrics.
 - **Video:** YouTube video containing in-game communications for a team.
 - **Team:** Represents a lolesports team, linking to player names and the league they belong to.
 
@@ -57,21 +80,5 @@ By leveraging these publicly available datasets, we can create AI-powered soluti
 
 TODO
 
-## **Project Spec**
-
-Include:
-
-Schemas
-Screenshots (ETL runs, quality checks, dashboards)
-DAG and data model diagrams
-Metrics and data quality checks
 
 
-## **Write Up**
-
-Document the project in a clear and concise way:
-
-Purpose of the project and expected outputs
-Dataset and technology choices, with justifications
-Steps followed and challenges faced
-Possible future enhancements
