@@ -41,7 +41,7 @@ def youtube_transcription():
     @task
     def get_video_title():
         """Get the title of the YouTube video"""
-        yt = YouTube(dag.params['yt_video_url'])
+        yt = YouTube(dag.params['yt_video_url'], 'WEB')
         return clean_yt_title(yt.title)
 
     @task
@@ -82,7 +82,7 @@ def youtube_transcription():
         """
         video_title = dag.params["yt_video_url"]
         logger.info(f"Downloading audio for video: {video_title}")
-        yt = YouTube(video_title)
+        yt = YouTube(video_title, "WEB")
         video = yt.streams.filter(only_audio=True).first()
         output_path = video.download(filename="audio.mp4")
         logger.info(f"Downloaded full audio to {output_path}")
