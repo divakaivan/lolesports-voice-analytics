@@ -1,0 +1,277 @@
+version: 2
+
+models:
+  - name: REF_DATA_FROM_VIDEO
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "GAME_TOTAL_TOKENS >= 0"
+      - dbt_utils.expression_is_true:
+          expression: "GAME_DURATION_SEC >= 0"
+    description: "Aggregated game-level data derived from raw video segments."
+    columns:
+      - name: SURR_ID
+        data_type: string
+        description: "Unique Record Identifier"
+        tests:
+          - unique
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: string
+      - name: INGESTION_TIMESTAMP
+        data_type: timestamp
+        description: "Timestamp of when the data was ingested"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: timestamp
+      - name: YT_VIDEO_TITLE
+        data_type: string
+        description: "Title of the YouTube video"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: string
+      - name: SEGMENT_TITLE
+        data_type: string
+        description: "Title of the segment"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: string
+      - name: FILENAME
+        data_type: string
+        description: "Filename of the audio segment"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: string
+      - name: FORMAT_NAME
+        data_type: string
+        description: "Format of the audio segment"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: string
+      - name: SAMPLE_RATE
+        data_type: int64
+        description: "Sample rate of the audio segment"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 8000
+              max_value: 192000
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: int64
+      - name: CHANNELS
+        data_type: int64
+        description: "Number of channels in the audio segment"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              max_value: 8
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: int64
+      - name: BITS_PER_SAMPLE
+        data_type: int64
+        description: "Bits per sample in the audio segment"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 8
+              max_value: 32
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: int64
+      - name: DURATION
+        data_type: float64
+        description: "Duration of the audio segment"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: float64
+      - name: BIT_RATE
+        data_type: int64
+        description: "Bit rate of the audio segment"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: int64
+      - name: SIZE
+        data_type: int64
+        description: "Size of the audio segment"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: int64
+      - name: CODEC_NAME
+        data_type: string
+        description: "Codec name of the audio segment"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: string
+      - name: MIN_SPEAKERS
+        data_type: int64
+        description: "Minimum number of speakers in the audio segment"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: int64
+      - name: MAX_SPEAKERS
+        data_type: int64
+        description: "Maximum number of speakers in the audio segment"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: int64
+      - name: TEAM
+        data_type: string
+        description: "Team name"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: string
+      - name: TEXT
+        data_type: string
+        description: "Transcription of the audio segment"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: string
+      - name: GPT_CLARITY
+        data_type: int64
+        description: "Clarity rating of the audio segment"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: -1
+              max_value: 5
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: int64
+      - name: GPT_INTENSITY
+        data_type: int64
+        description: "Intensity rating of the audio segment"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: -1
+              max_value: 5
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: int64
+      - name: GPT_SUMMARY
+        data_type: string
+        description: "Text summary of the audio segment"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: string
+      - name: RECORD_SOURCE
+        data_type: string
+        description: "Table source"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: string
+      - name: GAME_ID
+        data_type: string
+        description: "Unique identifier for the game."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: string
+      - name: GAME_TOTAL_TOKENS
+        data_type: float64
+        description: "Total token count for the game."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: float64
+      - name: GAME_DURATION_SEC
+        data_type: float64
+        description: "Total duration of the game."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: float64
+      - name: AVG_GAME_CLARITY
+        data_type: float64
+        description: "Average clarity score for the game."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: float64
+      - name: AVG_GAME_INTENSITY
+        data_type: float64
+        description: "Average intensity score for the game."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: float64
+
+  - name: REF_TEAM_MEMBERS
+    columns:
+      - name: SURR_ID
+        data_type: string
+        description: "Unique Record Identifier"
+        tests:
+          - unique
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: string
+      - name: PLAYER_NAME
+        data_type: string
+        description: "Player name"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: string
+      - name: TEAM
+        data_type: string
+        description: "Current Team Name"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: string
+      - name: EFFECTIVE_START_DATE
+        data_type: date
+        description: "Date when the player joined the team"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: date
+      - name: EFFECTIVE_END_DATE
+        data_type: date
+        description: "Date when the player left the team (NULL if active)"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: date
+      - name: IS_CURRENT
+        data_type: boolean
+        description: "Indicates whether this is the current team (TRUE = Active, FALSE = Historical)"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: boolean
+      - name: CREATED_AT
+        data_type: timestamp
+        description: "Record creation timestamp"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: timestamp
+      - name: UPDATED_AT
+        data_type: timestamp
+        description: "Last update timestamp"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: timestamp
+      - name: RECORD_SOURCE
+        data_type: string
+        description: "Table source"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: string
