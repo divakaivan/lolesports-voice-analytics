@@ -28,9 +28,9 @@ By leveraging these publicly available datasets, we can create AI-powered soluti
 
 ![conceptial-model](project_info/conceptial_model.png)
 
-- **Video:** The primary source containing metadata about game footage, including upload details and associated teams.  
-- **Team:** Represents a sports team, linking to player names and the league they belong to.  
-- **Audio:** Extracted from videos, storing technical properties and linked to game transcriptions for further analysis.  
+- **Video:** The primary source containing metadata about game footage, including upload details and associated teams.
+- **Team:** Represents a sports team, linking to player names and the league they belong to.
+- **Audio:** Extracted from videos, storing technical properties and linked to game transcriptions for further analysis.
 - **Game Transcription:** AI-generated text derived from audio, including summaries, clarity levels, and hype metrics.
 
 ---

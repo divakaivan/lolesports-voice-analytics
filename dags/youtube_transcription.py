@@ -174,10 +174,18 @@ def youtube_transcription():
         logger.info(f"Transcribed segment: {segment['title']} ({segment['filename']})")
 
         # check keys match with required_fields
-        required_fields = set(i['name'] for i in get_raw_audio_bq_schema() if i['name'] != 'ingestion_timestamp')
+        required_fields = set(
+            i["name"]
+            for i in get_raw_audio_bq_schema()
+            if i["name"] != "ingestion_timestamp"
+        )
         if set(segment.keys()) != required_fields:
-            logger.error(f"Missing fields in transcription: {segment}. Required fields: {required_fields}")
-            raise ValueError(f"Missing fields in transcription: {segment.keys()}. Required fields: {required_fields}")
+            logger.error(
+                f"Missing fields in transcription: {segment}. Required fields: {required_fields}"
+            )
+            raise ValueError(
+                f"Missing fields in transcription: {segment.keys()}. Required fields: {required_fields}"
+            )
 
         return segment
 
@@ -231,13 +239,17 @@ def youtube_transcription():
         yt_video_title = transcriptions[0]["yt_video_title"].strip()
         yt_video_title = "".join(e for e in yt_video_title if e.isalnum())[:15]
 
-        required_fields = set(i['name'] for i in get_raw_audio_bq_schema())
+        required_fields = set(i["name"] for i in get_raw_audio_bq_schema())
         with open("complete_transcription.json", "w") as f:
             for transcription in transcriptions:
                 transcription["ingestion_timestamp"] = datetime.now().isoformat()
                 if set(transcription.keys()) != required_fields:
-                    logger.error(f"Missing fields in transcription: {transcription}. Required fields: {required_fields}")
-                    raise ValueError(f"Missing fields in transcription: {transcription.keys()}. Required fields: {required_fields}")
+                    logger.error(
+                        f"Missing fields in transcription: {transcription}. Required fields: {required_fields}"
+                    )
+                    raise ValueError(
+                        f"Missing fields in transcription: {transcription.keys()}. Required fields: {required_fields}"
+                    )
 
                 f.write(json.dumps(transcription) + "\n")
 
