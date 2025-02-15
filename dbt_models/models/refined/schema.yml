@@ -172,13 +172,6 @@ models:
           - not_null
           - dbt_expectations.expect_column_values_to_be_of_type:
               column_type: string
-      - name: RECORD_SOURCE
-        data_type: string
-        description: "Table source"
-        tests:
-          - not_null
-          - dbt_expectations.expect_column_values_to_be_of_type:
-              column_type: string
       - name: GAME_ID
         data_type: string
         description: "Unique identifier for the game."
@@ -268,10 +261,3 @@ models:
           - not_null
           - dbt_expectations.expect_column_values_to_be_of_type:
               column_type: timestamp
-      - name: RECORD_SOURCE
-        data_type: string
-        description: "Table source"
-        tests:
-          - not_null
-          - dbt_expectations.expect_column_values_to_be_of_type:
-              column_type: string

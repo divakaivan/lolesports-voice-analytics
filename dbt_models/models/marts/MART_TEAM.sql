@@ -9,7 +9,7 @@ WITH
             IS_CURRENT,
             CREATED_AT,
             UPDATED_AT
-        FROM {{ ref('STG_TEAM_MEMBERS') }}
+        FROM {{ ref('REF_TEAM_MEMBERS') }}
     )
 SELECT *
 FROM final
