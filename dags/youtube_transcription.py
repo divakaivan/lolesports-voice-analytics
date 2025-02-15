@@ -79,11 +79,11 @@ def youtube_transcription():
                 print('Trying client: ' + client)
                 yt = YouTube(params['yt_video_url'])
                 video = yt.streams.get_audio_only()#filter(only_audio=True).first()
-                output_path = video.download(filename="audio.mp4")
+                
             except:
                 error_type, e, error_traceback = sys.exc_info()
                 print(f'Failed client: {client} with Error: {e}\n\n\n\n')
-        
+        output_path = video.download(filename="audio.mp4")
         logger.info(f"Downloaded full audio to {output_path}")
         return {
             "audio_path": output_path,
