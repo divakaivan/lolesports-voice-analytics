@@ -104,6 +104,7 @@ def youtube_transcription():
 
         for client in list_of_clients:
             try:
+                logger.debug('Trying client: ' + client)
                 yt = YouTube(params['yt_video_url'], client=client)
             except:
                 error_type, e, error_traceback = sys.exc_info()
