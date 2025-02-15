@@ -100,7 +100,14 @@ def youtube_transcription():
         """
         video_url = dag.params["yt_video_url"]
         logger.info(f"Downloading audio for video: {video_url}")
-        yt = YouTube(video_url, "WEB")
+        list_of_clients = ['WEB', 'WEB_EMBED', 'WEB_MUSIC', 'WEB_CREATOR', 'WEB_SAFARI', 'ANDROID', 'ANDROID_MUSIC', 'ANDROID_CREATOR', 'ANDROID_VR', 'ANDROID_PRODUCER', 'ANDROID_TESTSUITE', 'IOS', 'IOS_MUSIC', 'IOS_CREATOR', 'MWEB', 'TV', 'TV_EMBED', 'MEDIA_CONNECT']
+
+        for client in list_of_clients:
+            try:
+                yt = YouTube(dag.params['yt_video_url'], client=client)
+            except:
+                error_type, e, error_traceback = sys.exc_info()
+                print(f'Failed client: {client} with Error: {e}\n\n\n\n')
         video = yt.streams.filter(only_audio=True).first()
         output_path = video.download(filename="audio.mp4")
         logger.info(f"Downloaded full audio to {output_path}")
