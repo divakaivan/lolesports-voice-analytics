@@ -74,7 +74,7 @@ jobs:
 
       - name: "Step 08 - Deploy to GitHub Pages"
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
         with:
           # By default, this action will look for the "github-pages" artifact.
           # If you want to use a different name, you'll need to adjust the upload step accordingly.
