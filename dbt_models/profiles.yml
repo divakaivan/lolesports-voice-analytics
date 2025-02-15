@@ -7,6 +7,7 @@ default:
       project: "{{ env_var('GCP_PROJECT_ID') }}"
       schema: "lolesports_voice_analytics"
       location: "US"
+      threads: 24
       priority: interactive
       keyfile_json:
         type: "{{ env_var('type') }}"
