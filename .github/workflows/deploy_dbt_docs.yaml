@@ -1,78 +1,91 @@
-name: deploy_dbt_docs
+name: "dbt prd pipeline"
 
+# Triggers
 on:
   push:
-    branches: ["main"]
-
+    branches:
+      - main
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-
-env:
-  GCP_LOCATION: australia-southeast1
-  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-  GCS_TARGET_PATH: gs://dbt-cicd-demo/artifact
-  DBT_PROFILES_DIR: ${{github.workspace}}/dbt_profiles
-
 jobs:
-  dbt-docs:
+  # Build job
+  build:
+    runs-on: ubuntu-latest
+    environment: prd
+    env:
+      ENV_CODE: ${{ vars.ENV_CODE }}
+      PROJ_CODE: ${{ vars.PROJ_CODE }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+    steps:
+      - name: "Step 01 - Checkout current branch"
+        id: step-01
+        uses: actions/checkout@v3
+
+      - name: "Step 02 - Install dbt"
+        id: step-02
+        run: pip3 install dbt-core dbt-bigquery
+
+      - name: "Step 03 - Verify dbt"
+        id: step-03
+        run: dbt --version
+
+      - name: "Step 04 - Authenticate with Google Cloud"
+        id: step-04
+        run: |
+          echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > $HOME/gcp-key.json
+          gcloud auth activate-service-account --key-file=$HOME/gcp-key.json
+          gcloud config set project $GCP_PROJECT_ID
+
+      - name: "Step 05 - Compile dbt"
+        id: step-05
+        working-directory: ./dbt_models
+        run: |
+          export DBT_PROFILES_DIR=$PWD
+          dbt deps
+          dbt debug -t $ENV_CODE
+          dbt compile -t $ENV_CODE
+
+      - name: "Step 06 - Generate dbt docs"
+        id: step-06
+        working-directory: ./dbt_models
+        run: |
+          export DBT_PROFILES_DIR=$PWD
+          dbt deps
+          dbt docs generate -t $ENV_CODE
+          mkdir -p ${{ github.workspace }}/docs
+          cp target/*.json target/*.html target/graph.gpickle ${{ github.workspace }}/docs
+          ls -ltra ${{ github.workspace }}/docs
+
+      - name: "Step 07 - Upload pages to artifact"
+        id: step-07
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: ${{ github.workspace }}/docs
+
+      - name: "Step 08 - Zip artifact"
+        id: step-08
+        run: zip -jrq docs.zip ${{ github.workspace }}/docs
+
+      - name: "Step 09 - Upload artifact for deployment job"
+        id: step-09
+        uses: actions/upload-artifact@v3
+        with:
+          name: docs
+          path: docs.zip
+
+  # Deploy to Github pages
+  deploy-to-github-pages:
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: "3.10"
-
-      - name: Create and start virtual environment
-        run: |
-          python -m venv venv
-          source venv/bin/activate          
-
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt          
-
-      - name: Set up service account key file
-        env:
-          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
-        run: |
-          echo ${GCP_SA_KEY} > ${{github.workspace}}/.github/key.json
-          echo SA_KEYFILE=${{github.workspace}}/.github/key.json >> $GITHUB_ENV          
-
-      - name: Authenticate to GCP
-        run: |
-          gcloud auth activate-service-account \
-            dbt-cicd@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --key-file $SA_KEYFILE --project ${{ env.GCP_PROJECT_ID }}          
-
-      - name: Generate dbt docs
-        id: docs
-        shell: bash -l {0}
-        run: |
-          dbt deps --project-dir=pizza_shop
-          dbt docs generate --profiles-dir=${{ env.DBT_PROFILES_DIR }} --project-dir=pizza_shop \
-            --target dev --target-path dbt-docs          
-
-      - name: Upload DBT docs Pages artifact
-        id: build
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: pizza_shop/dbt-docs
-          name: dbt-docs
-
-      - name: Publish DBT docs to GitHub Pages
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
-        with:
-          artifact_name: dbt-docs
