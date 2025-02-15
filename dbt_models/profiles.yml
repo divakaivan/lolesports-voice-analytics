@@ -6,6 +6,5 @@ default:
       method: service-account
       keyfile: "{{ env_var('GCP_SERVICE_ACCOUNT_KEY') }}"
       project: "{{ env_var('GCP_PROJECT_ID') }}"
-      dataset: "schema"
       location: "US"
       priority: interactive
