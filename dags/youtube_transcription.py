@@ -79,29 +79,28 @@ def youtube_transcription():
                 print('Trying client: ' + client)
                 yt = YouTube(params['yt_video_url'])
                 video = yt.streams.get_audio_only()#filter(only_audio=True).first()
-                
+                output_path = video.download(filename="audio.mp4")
+                logger.info(f"Downloaded full audio to {output_path}")
+                return {
+                    "audio_path": output_path,
+                    "yt_video_title": clean_yt_title(yt.title),
+                    "chapters": [
+                        {
+                            "title": chapter.title,
+                            "start": chapter.start_seconds,
+                            "end": next_chapter.start_seconds
+                            if i < len(yt.chapters) - 1
+                            else yt.length,
+                        }
+                        for i, (chapter, next_chapter) in enumerate(
+                            zip(yt.chapters, yt.chapters[1:] + [None])
+                        )
+                    ],
+                }
             except:
                 error_type, e, error_traceback = sys.exc_info()
                 print(f'Failed client: {client} with Error: {e}\n\n\n\n')
-        output_path = video.download(filename="audio.mp4")
-        logger.info(f"Downloaded full audio to {output_path}")
-        return {
-            "audio_path": output_path,
-            "yt_video_title": clean_yt_title(yt.title),
-            "chapters": [
-                {
-                    "title": chapter.title,
-                    "start": chapter.start_seconds,
-                    "end": next_chapter.start_seconds
-                    if i < len(yt.chapters) - 1
-                    else yt.length,
-                }
-                for i, (chapter, next_chapter) in enumerate(
-                    zip(yt.chapters, yt.chapters[1:] + [None])
-                )
-            ],
-        }
-
+        
     @task
     def check_video_exists(audio_file_info: dict) -> bool:
         """
