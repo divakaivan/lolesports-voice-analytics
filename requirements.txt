@@ -12,3 +12,5 @@ lxml
 html5lib
 openai
 loguru
+dbt-core
+dbt-bigquery

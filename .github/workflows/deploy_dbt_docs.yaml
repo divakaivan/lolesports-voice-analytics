@@ -1,0 +1,81 @@
+name: deploy_dbt_docs
+
+on:
+  push:
+    branches: ["main"]
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+
+env:
+  GCP_LOCATION: australia-southeast1
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCS_TARGET_PATH: gs://dbt-cicd-demo/artifact
+  DBT_PROFILES_DIR: ${{github.workspace}}/dbt_profiles
+
+jobs:
+  dbt-docs:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    needs: dbt-unit-tests
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: "3.10"
+
+      - name: Create and start virtual environment
+        run: |
+          python -m venv venv
+          source venv/bin/activate          
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt          
+
+      - name: Set up service account key file
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          echo ${GCP_SA_KEY} > ${{github.workspace}}/.github/key.json
+          echo SA_KEYFILE=${{github.workspace}}/.github/key.json >> $GITHUB_ENV          
+
+      - name: Authenticate to GCP
+        run: |
+          gcloud auth activate-service-account \
+            dbt-cicd@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --key-file $SA_KEYFILE --project ${{ env.GCP_PROJECT_ID }}          
+
+      - name: Generate dbt docs
+        id: docs
+        shell: bash -l {0}
+        run: |
+          dbt deps --project-dir=pizza_shop
+          dbt docs generate --profiles-dir=${{ env.DBT_PROFILES_DIR }} --project-dir=pizza_shop \
+            --target dev --target-path dbt-docs          
+
+      - name: Upload DBT docs Pages artifact
+        id: build
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: pizza_shop/dbt-docs
+          name: dbt-docs
+
+      - name: Publish DBT docs to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+        with:
+          artifact_name: dbt-docs
