@@ -17,6 +17,16 @@ jobs:
       PROJ_CODE: ${{ vars.PROJ_CODE }}
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      type: ${{ secrets.type }}
+      project_id: ${{ secrets.project_id }}
+      private_key_id: ${{ secrets.private_key_id }}
+      private_key: ${{ secrets.private_key }}
+      client_email: ${{ secrets.client_email }}
+      client_id: ${{ secrets.client_id }}
+      auth_uri: ${{ secrets.auth_uri }}
+      token_uri: ${{ secrets.token_uri }}
+      auth_provider_x509_cert_url: ${{ secrets.auth_provider_x509_cert_url }}
+      client_x509_cert_url: ${{ secrets.client_x509_cert_url }}
 
     steps:
       - name: "Step 01 - Checkout current branch"
