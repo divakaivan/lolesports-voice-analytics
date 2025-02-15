@@ -1,3 +1,4 @@
+import sys
 import os
 from airflow.decorators import dag, task
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
@@ -6,6 +7,7 @@ from airflow.providers.google.cloud.transfers.gcs_to_bigquery import (
 )
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.exceptions import AirflowSkipException
+from airflow.operators.bash import BashOperator
 from datetime import datetime, timedelta
 from pytubefix import YouTube
 from pydub import AudioSegment
@@ -32,22 +34,83 @@ from loguru import logger
     },
     schedule_interval=None,
     catchup=False,
+    params={
+        "yt_video_url": "https://www.youtube.com/watch?v=4vXsZI8y_6w",
+    },
     tags=["ivan", "youtube", "transcription"],
 )
 def youtube_transcription():
-    @task
-    def get_video_title():
-        """Get the title of the YouTube video"""
-        yt = YouTube("https://youtu.be/CwBuJgJ5b80")
-        return clean_yt_title(yt.title)
+
+    install_npm_package = BashOperator(
+        task_id='install_youtube_po_token_generator',
+        bash_command='npm install youtube-po-token-generator'
+    )
+
+    # @task
+    # def get_video_title(params: dict) -> str:
+    #     """Get the title of the YouTube video"""
+    #     list_of_clients = ['WEB', 'WEB_EMBED', 'WEB_MUSIC', 'WEB_CREATOR', 'WEB_SAFARI', 'ANDROID', 'ANDROID_MUSIC', 'ANDROID_CREATOR', 'ANDROID_VR', 'ANDROID_PRODUCER', 'ANDROID_TESTSUITE', 'IOS', 'IOS_MUSIC', 'IOS_CREATOR', 'MWEB', 'TV', 'TV_EMBED', 'MEDIA_CONNECT']
+
+    #     for client in list_of_clients:
+    #         try:
+    #             yt = YouTube(params['yt_video_url'], client=client)
+    #             return clean_yt_title(yt.title)
+    #         except:
+    #             error_type, e, error_traceback = sys.exc_info()
+    #             print(f'Failed client: {client} with Error: {e}\n\n\n\n')
+
+        # yt = YouTube(dag.params['yt_video_url'], 'WEB')
+        # return clean_yt_title(yt.title)
 
     @task
-    def check_video_exists(video_title: str) -> bool:
+    def download_audio(params: dict) -> dict:
+        """
+        Fetches a YouTube video from the given URL, downloads its audio as an MP4 file,
+        and extracts chapter details including title, start time, and end time.
+
+        Returns:
+            dict: A dictionary containing the path to the downloaded audio file and chapter details.
+        """
+        video_url = params["yt_video_url"]
+        logger.info(f"Downloading audio for video: {video_url}")
+        list_of_clients = ['WEB', 'WEB_EMBED', 'WEB_MUSIC', 'WEB_CREATOR', 'WEB_SAFARI', 'ANDROID', 'ANDROID_MUSIC', 'ANDROID_CREATOR', 'ANDROID_VR', 'ANDROID_PRODUCER', 'ANDROID_TESTSUITE', 'IOS', 'IOS_MUSIC', 'IOS_CREATOR', 'MWEB', 'TV', 'TV_EMBED', 'MEDIA_CONNECT']
+        for client in list_of_clients:
+            try:
+                print('Trying client: ' + client)
+                yt = YouTube(params['yt_video_url'], client=client)
+                # video = yt.streams.filter(only_audio=True).first()
+                stream = yt.streams.get_by_itag(140)
+                stream.download(filename=f'test.m4a')
+                print('DOWNLOADED!!!')
+            except:
+                error_type, e, error_traceback = sys.exc_info()
+                print(f'Failed client: {client} with Error: {e}\n\n\n\n')
+        output_path = video.download(filename="audio.mp4")
+        logger.info(f"Downloaded full audio to {output_path}")
+        return {
+            "audio_path": output_path,
+            "yt_video_title": clean_yt_title(yt.title),
+            "chapters": [
+                {
+                    "title": chapter.title,
+                    "start": chapter.start_seconds,
+                    "end": next_chapter.start_seconds
+                    if i < len(yt.chapters) - 1
+                    else yt.length,
+                }
+                for i, (chapter, next_chapter) in enumerate(
+                    zip(yt.chapters, yt.chapters[1:] + [None])
+                )
+            ],
+        }
+
+    @task
+    def check_video_exists(audio_file_info: dict) -> bool:
         """
         Check if the video has already been processed by querying BigQuery.
         Returns True if video exists, False otherwise.
         """
-
+        video_title = audio_file_info["yt_video_title"]
         bq_hook = BigQueryHook()
         sql = f"""
             SELECT COUNT(*) as count
@@ -67,38 +130,6 @@ def youtube_transcription():
 
         logger.debug(f"Video {video_title} has not been processed yet")
         return False
-
-    @task
-    def download_audio() -> dict:
-        """
-        Fetches a YouTube video from the given URL, downloads its audio as an MP4 file,
-        and extracts chapter details including title, start time, and end time.
-
-        Returns:
-            dict: A dictionary containing the path to the downloaded audio file and chapter details.
-        """
-        video_title = "https://youtu.be/CwBuJgJ5b80"
-        logger.info(f"Downloading audio for video: {video_title}")
-        yt = YouTube(video_title)
-        video = yt.streams.filter(only_audio=True).first()
-        output_path = video.download(filename="audio.mp4")
-        logger.info(f"Downloaded full audio to {output_path}")
-        return {
-            "audio_path": output_path,
-            "yt_video_title": clean_yt_title(yt.title),
-            "chapters": [
-                {
-                    "title": chapter.title,
-                    "start": chapter.start_seconds,
-                    "end": next_chapter.start_seconds
-                    if i < len(yt.chapters) - 1
-                    else yt.length,
-                }
-                for i, (chapter, next_chapter) in enumerate(
-                    zip(yt.chapters, yt.chapters[1:] + [None])
-                )
-            ],
-        }
 
     @task
     def split_audio(audio_info: dict) -> list[dict]:
@@ -132,10 +163,9 @@ def youtube_transcription():
                     extract = audio[seg_start * 1000 : seg_end * 1000]
                     extract.export(filename, format="wav")
                     audio_metadata = mediainfo(filename)
-                    title = f"{title} (Part {j+1})"
                     segments.append(
                         get_segment_metadata(
-                            audio_info, title, filename, audio_metadata
+                            audio_info, f"{title} (Part {j+1})", filename, audio_metadata
                         )
                     )
                     logger.info(f"Processed segment: {title} ({seg_start}-{seg_end})")
@@ -234,7 +264,7 @@ def youtube_transcription():
             str: The YouTube video title used as the filename for the complete transcription.
         """
 
-        transcriptions = list(transcriptions)
+        transcriptions = list(transcriptions) # set(transcriptions)
         # take yt video name from 1st transcription
         yt_video_title = transcriptions[0]["yt_video_title"].strip()
         yt_video_title = "".join(e for e in yt_video_title if e.isalnum())[:15]
@@ -280,16 +310,17 @@ def youtube_transcription():
         schema_fields=get_raw_audio_bq_schema(),
     )
 
-    video_title = get_video_title()
-    video_check = check_video_exists(video_title)
+    # video_title = get_video_title()
+    
 
     audio_info = download_audio()
+    video_check = check_video_exists(audio_info)
     segments = split_audio(audio_info)
     transcribed_segments = transcribe_segment.expand(segment=segments)
     uploaded_segments = upload_to_gcs.expand(transcription=transcribed_segments)
     uploaded_transcription_path = upload_full_transcription_to_gcs(uploaded_segments)
 
-    video_title >> video_check >> audio_info >> segments
+    install_npm_package >> audio_info >> video_check >> segments
     uploaded_transcription_path >> add_transcription_to_bq
 
 
