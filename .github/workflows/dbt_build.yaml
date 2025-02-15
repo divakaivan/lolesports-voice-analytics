@@ -1,0 +1,58 @@
+name: "dbt build"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    environment: prd
+    env:
+      ENV_CODE: ${{ vars.ENV_CODE }}
+      PROJ_CODE: ${{ vars.PROJ_CODE }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      type: ${{ secrets.type }}
+      project_id: ${{ secrets.project_id }}
+      private_key_id: ${{ secrets.private_key_id }}
+      private_key: ${{ secrets.private_key }}
+      client_email: ${{ secrets.client_email }}
+      client_id: ${{ secrets.client_id }}
+      auth_uri: ${{ secrets.auth_uri }}
+      token_uri: ${{ secrets.token_uri }}
+      auth_provider_x509_cert_url: ${{ secrets.auth_provider_x509_cert_url }}
+      client_x509_cert_url: ${{ secrets.client_x509_cert_url }}
+
+    steps:
+      - name: "Step 01 - Checkout current branch"
+        id: step-01
+        uses: actions/checkout@v3
+
+      - name: "Step 02 - Install dbt"
+        id: step-02
+        run: pip3 install dbt-core dbt-bigquery
+
+      - name: "Step 03 - Verify dbt"
+        id: step-03
+        run: dbt --version
+
+      - name: "Step 04 - Authenticate with Google Cloud"
+        id: step-04
+        run: |
+          echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > $HOME/gcp-key.json
+          gcloud auth activate-service-account --key-file=$HOME/gcp-key.json
+          gcloud config set project $GCP_PROJECT_ID
+
+      - name: "Step 05 - Compile dbt"
+        id: step-05
+        working-directory: ./dbt_models
+        run: |
+          export DBT_PROFILES_DIR=$PWD
+          dbt deps
+          dbt debug -t $ENV_CODE
+          dbt compile -t $ENV_CODE
+
+      - name: "Step 06 - Run dbt build"
+        working-directory: ./dbt_models
+        run: |
+          dbt build
