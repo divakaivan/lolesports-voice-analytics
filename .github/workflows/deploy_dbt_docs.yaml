@@ -12,7 +12,7 @@ jobs:
     permissions:
       id-token: write
       pages: write
-    environment: prd
+    environment: dbt_docs
     env:
       ENV_CODE: ${{ vars.ENV_CODE }}
       PROJ_CODE: ${{ vars.PROJ_CODE }}

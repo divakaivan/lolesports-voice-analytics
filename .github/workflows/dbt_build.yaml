@@ -6,7 +6,6 @@ on:
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
-    environment: prd
     env:
       ENV_CODE: ${{ vars.ENV_CODE }}
       PROJ_CODE: ${{ vars.PROJ_CODE }}
