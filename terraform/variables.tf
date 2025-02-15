@@ -1,5 +1,5 @@
 locals {
-  credentials = "../include/my-creds.json"
+  credentials = "../airflow/include/my-creds.json"
 }
 
 variable "region" {
