@@ -60,7 +60,7 @@ jobs:
 
       - name: "Step 07 - Upload pages to artifact"
         id: step-07
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
           path: ${{ github.workspace }}/docs
 
