@@ -207,7 +207,7 @@ log.txt*
 !/docker-context-files/.README.md
 # Local .terraform directories
 **/.terraform/*
-
+.terraform.lock.hcl
 # .tfstate files
 *.tfstate
 *.tfstate.*
