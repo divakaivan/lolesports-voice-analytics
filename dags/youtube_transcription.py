@@ -78,7 +78,10 @@ def youtube_transcription():
             try:
                 print('Trying client: ' + client)
                 yt = YouTube(params['yt_video_url'], client=client)
-                video = yt.streams.filter(only_audio=True).first()
+                # video = yt.streams.filter(only_audio=True).first()
+                stream = yt.streams.get_by_itag(140)
+                stream.download(filename=f'test.m4a')
+                print('DOWNLOADED!!!')
             except:
                 error_type, e, error_traceback = sys.exc_info()
                 print(f'Failed client: {client} with Error: {e}\n\n\n\n')
