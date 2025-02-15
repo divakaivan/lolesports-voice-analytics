@@ -43,7 +43,7 @@ def youtube_transcription():
 
     install_npm_package = BashOperator(
         task_id='install_youtube_po_token_generator',
-        bash_command='npm install -g youtube-po-token-generator'
+        bash_command='npm install youtube-po-token-generator'
     )
 
     @task
