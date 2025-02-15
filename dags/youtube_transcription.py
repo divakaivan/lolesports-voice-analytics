@@ -78,7 +78,7 @@ def youtube_transcription():
             try:
                 print('Trying client: ' + client)
                 yt = YouTube(params['yt_video_url'], client=client)
-                video = yt.streams.get_audio_only()#filter(only_audio=True).first()
+                video = yt.streams.filter(only_audio=True).first()
                 output_path = video.download(filename="audio.mp4")
                 logger.info(f"Downloaded full audio to {output_path}")
                 return {
