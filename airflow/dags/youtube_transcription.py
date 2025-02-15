@@ -38,7 +38,7 @@ from loguru import logger
     tags=["ivan", "youtube", "transcription"],
 )
 def youtube_transcription():
-    # @task
+    # @task # don't use for now
     # def get_video_title(params: dict) -> str:
     #     """Get the title of the YouTube video"""
     #     list_of_clients = ['WEB', 'WEB_EMBED', 'WEB_MUSIC', 'WEB_CREATOR', 'WEB_SAFARI', 'ANDROID', 'ANDROID_MUSIC', 'ANDROID_CREATOR', 'ANDROID_VR', 'ANDROID_PRODUCER', 'ANDROID_TESTSUITE', 'IOS', 'IOS_MUSIC', 'IOS_CREATOR', 'MWEB', 'TV', 'TV_EMBED', 'MEDIA_CONNECT']
