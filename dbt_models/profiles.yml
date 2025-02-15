@@ -4,8 +4,8 @@ default:
     bigquery:
       type: bigquery
       method: service-account
-      keyfile: "{{ env_var('GCP_SERVICE_ACCOUNT_KEY') }}"
+      keyfile_json: "{{ env_var('GCP_SERVICE_ACCOUNT_KEY') }}"
       project: "{{ env_var('GCP_PROJECT_ID') }}"
-      schema: "lolesports_voice_analytics_MARTS"
+      schema: "lolesports_voice_analytics"
       location: "US"
       priority: interactive
