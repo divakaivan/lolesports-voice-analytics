@@ -1,15 +1,13 @@
-name: "dbt prd pipeline"
+name: "dbt docs deployment"
 
-# Triggers
 on:
   push:
     branches:
-      - main
+      - dbt/dbt-docs
   workflow_dispatch:
 
 jobs:
-  # Build job
-  build:
+  build_and_deploy:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -79,6 +77,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
         with:
-          # By default, this action will look for the "github-pages" artifact.
-          # If you want to use a different name, you'll need to adjust the upload step accordingly.
           artifact_name: github-pages
