@@ -41,10 +41,10 @@ from loguru import logger
 )
 def youtube_transcription():
 
-    install_npm_package = BashOperator(
-        task_id='install_youtube_po_token_generator',
-        bash_command='npm install youtube-po-token-generator'
-    )
+    # install_npm_package = BashOperator(
+    #     task_id='install_youtube_po_token_generator',
+    #     bash_command='npm install youtube-po-token-generator'
+    # )
 
     @task
     def get_video_title():
@@ -309,7 +309,7 @@ def youtube_transcription():
     uploaded_segments = upload_to_gcs.expand(transcription=transcribed_segments)
     uploaded_transcription_path = upload_full_transcription_to_gcs(uploaded_segments)
 
-    install_npm_package >> video_title >> video_check >> audio_info >> segments
+    video_title >> video_check >> audio_info >> segments
     uploaded_transcription_path >> add_transcription_to_bq
 
 
