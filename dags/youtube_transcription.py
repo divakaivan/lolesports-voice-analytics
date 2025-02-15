@@ -47,13 +47,13 @@ def youtube_transcription():
     )
 
     @task
-    def get_video_title():
+    def get_video_title(params: dict) -> str:
         """Get the title of the YouTube video"""
         list_of_clients = ['WEB', 'WEB_EMBED', 'WEB_MUSIC', 'WEB_CREATOR', 'WEB_SAFARI', 'ANDROID', 'ANDROID_MUSIC', 'ANDROID_CREATOR', 'ANDROID_VR', 'ANDROID_PRODUCER', 'ANDROID_TESTSUITE', 'IOS', 'IOS_MUSIC', 'IOS_CREATOR', 'MWEB', 'TV', 'TV_EMBED', 'MEDIA_CONNECT']
 
         for client in list_of_clients:
             try:
-                yt = YouTube(dag.params['yt_video_url'], client=client)
+                yt = YouTube(params['yt_video_url'], client=client)
                 return clean_yt_title(yt.title)
             except:
                 error_type, e, error_traceback = sys.exc_info()
@@ -90,7 +90,7 @@ def youtube_transcription():
         return False
 
     @task
-    def download_audio() -> dict:
+    def download_audio(params: dict) -> dict:
         """
         Fetches a YouTube video from the given URL, downloads its audio as an MP4 file,
         and extracts chapter details including title, start time, and end time.
@@ -98,13 +98,13 @@ def youtube_transcription():
         Returns:
             dict: A dictionary containing the path to the downloaded audio file and chapter details.
         """
-        video_url = dag.params["yt_video_url"]
+        video_url = params["yt_video_url"]
         logger.info(f"Downloading audio for video: {video_url}")
         list_of_clients = ['WEB', 'WEB_EMBED', 'WEB_MUSIC', 'WEB_CREATOR', 'WEB_SAFARI', 'ANDROID', 'ANDROID_MUSIC', 'ANDROID_CREATOR', 'ANDROID_VR', 'ANDROID_PRODUCER', 'ANDROID_TESTSUITE', 'IOS', 'IOS_MUSIC', 'IOS_CREATOR', 'MWEB', 'TV', 'TV_EMBED', 'MEDIA_CONNECT']
 
         for client in list_of_clients:
             try:
-                yt = YouTube(dag.params['yt_video_url'], client=client)
+                yt = YouTube(params['yt_video_url'], client=client)
             except:
                 error_type, e, error_traceback = sys.exc_info()
                 print(f'Failed client: {client} with Error: {e}\n\n\n\n')
