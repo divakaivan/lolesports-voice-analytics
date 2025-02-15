@@ -77,7 +77,7 @@ def youtube_transcription():
         for client in list_of_clients:
             try:
                 print('Trying client: ' + client)
-                yt = YouTube(params['yt_video_url'])
+                yt = YouTube(params['yt_video_url'], client=client)
                 video = yt.streams.get_audio_only()#filter(only_audio=True).first()
                 output_path = video.download(filename="audio.mp4")
                 logger.info(f"Downloaded full audio to {output_path}")
@@ -101,6 +101,7 @@ def youtube_transcription():
                 error_type, e, error_traceback = sys.exc_info()
                 print(f'Failed client: {client} with Error: {e}\n\n\n\n')
         
+
     @task
     def check_video_exists(audio_file_info: dict) -> bool:
         """
