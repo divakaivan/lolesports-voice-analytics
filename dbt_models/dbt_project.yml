@@ -2,6 +2,9 @@ name: 'dbt_models'
 version: '1.0.0'
 config-version: 2
 
+dbt-cloud:
+    project-id: 70403103980259
+
 profile: 'default'
 
 # These configurations specify where dbt should look for different types of files.
