@@ -2,16 +2,13 @@
 pytubefix==8.12.1
 pydub
 ffmpeg
-pyannote.audio
 openai-whisper
 ffmpeg-python
 apache-airflow-providers-google
 apache-airflow[google]
 beautifulsoup4
-pandas
 requests
 lxml
 html5lib
 openai
 loguru
-pre-commit
