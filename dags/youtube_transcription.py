@@ -41,11 +41,6 @@ from loguru import logger
 )
 def youtube_transcription():
 
-    install_npm_package = BashOperator(
-        task_id='install_youtube_po_token_generator',
-        bash_command='npm install youtube-po-token-generator'
-    )
-
     # @task
     # def get_video_title(params: dict) -> str:
     #     """Get the title of the YouTube video"""
@@ -73,18 +68,9 @@ def youtube_transcription():
         """
         video_url = params["yt_video_url"]
         logger.info(f"Downloading audio for video: {video_url}")
-        list_of_clients = ['WEB', 'WEB_EMBED', 'WEB_MUSIC', 'WEB_CREATOR', 'WEB_SAFARI', 'ANDROID', 'ANDROID_MUSIC', 'ANDROID_CREATOR', 'ANDROID_VR', 'ANDROID_PRODUCER', 'ANDROID_TESTSUITE', 'IOS', 'IOS_MUSIC', 'IOS_CREATOR', 'MWEB', 'TV', 'TV_EMBED', 'MEDIA_CONNECT']
-        for client in list_of_clients:
-            try:
-                print('Trying client: ' + client)
-                yt = YouTube(params['yt_video_url'], client=client)
-                # video = yt.streams.filter(only_audio=True).first()
-                stream = yt.streams.get_by_itag(140)
-                stream.download(filename=f'test.m4a')
-                print('DOWNLOADED!!!')
-            except:
-                error_type, e, error_traceback = sys.exc_info()
-                print(f'Failed client: {client} with Error: {e}\n\n\n\n')
+
+        yt = YouTube(params['yt_video_url'])
+        video = yt.streams.filter(only_audio=True).first()
         output_path = video.download(filename="audio.mp4")
         logger.info(f"Downloaded full audio to {output_path}")
         return {
@@ -178,7 +164,10 @@ def youtube_transcription():
                     get_segment_metadata(audio_info, title, filename, audio_metadata)
                 )
                 logger.info(f"Processed segment: {title} ({start_time}-{end_time})")
-
+        
+        # clean up local file
+        os.remove(audio_info["audio_path"])
+        
         return segments
 
     @task(max_active_tis_per_dag=4)
@@ -295,6 +284,8 @@ def youtube_transcription():
             object_name=combined_transcript_path,
             filename="complete_transcription.json",
         )
+        # clean up local file
+        os.remove("complete_transcription.json")
 
         return yt_video_title
 
@@ -320,7 +311,7 @@ def youtube_transcription():
     uploaded_segments = upload_to_gcs.expand(transcription=transcribed_segments)
     uploaded_transcription_path = upload_full_transcription_to_gcs(uploaded_segments)
 
-    install_npm_package >> audio_info >> video_check >> segments
+    audio_info >> video_check >> segments
     uploaded_transcription_path >> add_transcription_to_bq
 
 
