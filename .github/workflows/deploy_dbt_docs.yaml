@@ -85,8 +85,6 @@ jobs:
           name: docs
           path: docs.zip
 
-  # Deploy to Github pages
-    # Deploy to Github pages
   deploy-to-github-pages:
     needs: build
     permissions:
@@ -97,15 +95,13 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Download artifact from build job
-        id: step-01
+      - name: Download docs artifact
         uses: actions/download-artifact@v4
         with:
           name: docs
           path: docs
 
-      - name: Unzip artifact
-        id: step-02
+      - name: Unzip docs artifact
         run: unzip -q docs/docs.zip -d docs
 
       - name: Deploy to GitHub Pages
@@ -113,4 +109,3 @@ jobs:
         uses: actions/deploy-pages@v2
         with:
           artifact_name: docs
-
