@@ -1,3 +1,4 @@
+import sys
 import os
 from airflow.decorators import dag, task
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
@@ -42,14 +43,24 @@ def youtube_transcription():
 
     install_npm_package = BashOperator(
         task_id='install_youtube_po_token_generator',
-        bash_command='npm install youtube-po-token-generator'
+        bash_command='npm install -g youtube-po-token-generator'
     )
 
     @task
     def get_video_title():
         """Get the title of the YouTube video"""
-        yt = YouTube(dag.params['yt_video_url'], 'WEB')
-        return clean_yt_title(yt.title)
+        list_of_clients = ['WEB', 'WEB_EMBED', 'WEB_MUSIC', 'WEB_CREATOR', 'WEB_SAFARI', 'ANDROID', 'ANDROID_MUSIC', 'ANDROID_CREATOR', 'ANDROID_VR', 'ANDROID_PRODUCER', 'ANDROID_TESTSUITE', 'IOS', 'IOS_MUSIC', 'IOS_CREATOR', 'MWEB', 'TV', 'TV_EMBED', 'MEDIA_CONNECT']
+
+        for client in list_of_clients:
+            try:
+                yt = YouTube(dag.params['yt_video_url'], client=client)
+                return clean_yt_title(yt.title)
+            except:
+                error_type, e, error_traceback = sys.exc_info()
+                print(f'Failed client: {client} with Error: {e}\n\n\n\n')
+
+        # yt = YouTube(dag.params['yt_video_url'], 'WEB')
+        # return clean_yt_title(yt.title)
 
     @task
     def check_video_exists(video_title: str) -> bool:

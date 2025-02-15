@@ -1,5 +1,5 @@
 # Astro Runtime includes the following pre-installed providers packages: https://www.astronomer.io/docs/astro/runtime-image-architecture#provider-packages
-pytubefix
+pytubefix==8.12.0
 pydub
 ffmpeg
 pyannote.audio
