@@ -58,7 +58,6 @@ jobs:
           dbt compile -t $ENV_CODE
 
       - name: "Step 06 - Generate dbt docs"
-        id: step-06
         working-directory: ./dbt_models
         run: |
           export DBT_PROFILES_DIR=$PWD
@@ -68,44 +67,15 @@ jobs:
           cp target/*.json target/*.html target/graph.gpickle ${{ github.workspace }}/docs
           ls -ltra ${{ github.workspace }}/docs
 
-      - name: "Step 07 - Upload pages to artifact"
-        id: step-07
+      - name: "Step 07 - Upload pages artifact"
         uses: actions/upload-pages-artifact@v3
         with:
           path: ${{ github.workspace }}/docs
 
-      - name: "Step 08 - Zip artifact"
-        id: step-08
-        run: zip -jrq docs.zip ${{ github.workspace }}/docs
-
-      - name: "Step 09 - Upload artifact for deployment job"
-        id: step-09
-        uses: actions/upload-artifact@v4
-        with:
-          name: docs
-          path: docs.zip
-
-  deploy-to-github-pages:
-    needs: build
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download docs artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: docs
-          path: docs
-
-      - name: Unzip docs artifact
-        run: unzip -q docs/docs.zip -d docs
-
-      - name: Deploy to GitHub Pages
+      - name: "Step 08 - Deploy to GitHub Pages"
         id: deployment
         uses: actions/deploy-pages@v2
         with:
-          artifact_name: docs
+          # By default, this action will look for the "github-pages" artifact.
+          # If you want to use a different name, you'll need to adjust the upload step accordingly.
+          artifact_name: github-pages
