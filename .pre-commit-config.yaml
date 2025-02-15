@@ -5,8 +5,6 @@ repos:
     rev: v4.5.0
     hooks:
       - id: check-added-large-files
-      - id: check-json
-      - id: check-toml
       - id: check-yaml
       - id: end-of-file-fixer
         exclude: (?x)^dbt_models/.*
@@ -18,3 +16,11 @@ repos:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix, --show-fixes]
       - id: ruff-format
+  -   repo: local
+      hooks:
+      - id: pytest
+        name: test python code
+        entry: bash -c 'PYTHONPATH=./airflow pytest'
+        language: system
+        pass_filenames: false
+        always_run: true
