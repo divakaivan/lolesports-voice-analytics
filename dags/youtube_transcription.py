@@ -46,48 +46,21 @@ def youtube_transcription():
         bash_command='npm install youtube-po-token-generator'
     )
 
-    @task
-    def get_video_title(params: dict) -> str:
-        """Get the title of the YouTube video"""
-        list_of_clients = ['WEB', 'WEB_EMBED', 'WEB_MUSIC', 'WEB_CREATOR', 'WEB_SAFARI', 'ANDROID', 'ANDROID_MUSIC', 'ANDROID_CREATOR', 'ANDROID_VR', 'ANDROID_PRODUCER', 'ANDROID_TESTSUITE', 'IOS', 'IOS_MUSIC', 'IOS_CREATOR', 'MWEB', 'TV', 'TV_EMBED', 'MEDIA_CONNECT']
+    # @task
+    # def get_video_title(params: dict) -> str:
+    #     """Get the title of the YouTube video"""
+    #     list_of_clients = ['WEB', 'WEB_EMBED', 'WEB_MUSIC', 'WEB_CREATOR', 'WEB_SAFARI', 'ANDROID', 'ANDROID_MUSIC', 'ANDROID_CREATOR', 'ANDROID_VR', 'ANDROID_PRODUCER', 'ANDROID_TESTSUITE', 'IOS', 'IOS_MUSIC', 'IOS_CREATOR', 'MWEB', 'TV', 'TV_EMBED', 'MEDIA_CONNECT']
 
-        for client in list_of_clients:
-            try:
-                yt = YouTube(params['yt_video_url'], client=client)
-                return clean_yt_title(yt.title)
-            except:
-                error_type, e, error_traceback = sys.exc_info()
-                print(f'Failed client: {client} with Error: {e}\n\n\n\n')
+    #     for client in list_of_clients:
+    #         try:
+    #             yt = YouTube(params['yt_video_url'], client=client)
+    #             return clean_yt_title(yt.title)
+    #         except:
+    #             error_type, e, error_traceback = sys.exc_info()
+    #             print(f'Failed client: {client} with Error: {e}\n\n\n\n')
 
         # yt = YouTube(dag.params['yt_video_url'], 'WEB')
         # return clean_yt_title(yt.title)
-
-    @task
-    def check_video_exists(video_title: str) -> bool:
-        """
-        Check if the video has already been processed by querying BigQuery.
-        Returns True if video exists, False otherwise.
-        """
-
-        bq_hook = BigQueryHook()
-        sql = f"""
-            SELECT COUNT(*) as count
-            FROM lolesports_voice_analytics.raw_data_from_video
-            WHERE yt_video_title = '{video_title}'
-        """
-        logger.debug(f"Scheduling SQL: {sql}")
-        result = bq_hook.get_first(sql)
-        logger.debug(f"Result: {result}")
-        count = result[0] if result else 0
-
-        if count > 0:
-            logger.error(f"Video {video_title} has already been processed")
-            raise AirflowSkipException(
-                f"Video {video_title} has already been processed"
-            )
-
-        logger.debug(f"Video {video_title} has not been processed yet")
-        return False
 
     @task
     def download_audio(params: dict) -> dict:
@@ -100,15 +73,16 @@ def youtube_transcription():
         """
         video_url = params["yt_video_url"]
         logger.info(f"Downloading audio for video: {video_url}")
-        list_of_clients = ['WEB', 'WEB_EMBED', 'WEB_MUSIC', 'WEB_CREATOR', 'WEB_SAFARI', 'ANDROID', 'ANDROID_MUSIC', 'ANDROID_CREATOR', 'ANDROID_VR', 'ANDROID_PRODUCER', 'ANDROID_TESTSUITE', 'IOS', 'IOS_MUSIC', 'IOS_CREATOR', 'MWEB', 'TV', 'TV_EMBED', 'MEDIA_CONNECT']
-
+        list_of_clients = ['WEB', 'WEB_SAFARI', 'ANDROID', 'ANDROID_MUSIC', 'ANDROID_CREATOR', 'ANDROID_VR', 'ANDROID_PRODUCER', 'ANDROID_TESTSUITE', 'IOS', 'IOS_MUSIC', 'IOS_CREATOR', 'MWEB', 'TV', 'TV_EMBED', 'MEDIA_CONNECT']
+        from urllib.error import HTTPError
         for client in list_of_clients:
             try:
-                logger.debug('Trying client: ' + client)
+                print('Trying client: ' + client)
                 yt = YouTube(params['yt_video_url'], client=client)
-            except:
-                error_type, e, error_traceback = sys.exc_info()
-                print(f'Failed client: {client} with Error: {e}\n\n\n\n')
+            except HTTPError as e:
+                print(f'HTTP Error {e.code}: {e.reason} - Failed client: {client}', exc_info=True)
+            except Exception as e:
+                print(f'Failed client: {client} with Error: {e}', exc_info=True)
         video = yt.streams.filter(only_audio=True).first()
         output_path = video.download(filename="audio.mp4")
         logger.info(f"Downloaded full audio to {output_path}")
@@ -128,6 +102,33 @@ def youtube_transcription():
                 )
             ],
         }
+
+    @task
+    def check_video_exists(audio_file_info: dict) -> bool:
+        """
+        Check if the video has already been processed by querying BigQuery.
+        Returns True if video exists, False otherwise.
+        """
+        video_title = audio_file_info["yt_video_title"]
+        bq_hook = BigQueryHook()
+        sql = f"""
+            SELECT COUNT(*) as count
+            FROM lolesports_voice_analytics.raw_data_from_video
+            WHERE yt_video_title = '{video_title}'
+        """
+        logger.debug(f"Scheduling SQL: {sql}")
+        result = bq_hook.get_first(sql)
+        logger.debug(f"Result: {result}")
+        count = result[0] if result else 0
+
+        if count > 0:
+            logger.error(f"Video {video_title} has already been processed")
+            raise AirflowSkipException(
+                f"Video {video_title} has already been processed"
+            )
+
+        logger.debug(f"Video {video_title} has not been processed yet")
+        return False
 
     @task
     def split_audio(audio_info: dict) -> list[dict]:
@@ -308,16 +309,17 @@ def youtube_transcription():
         schema_fields=get_raw_audio_bq_schema(),
     )
 
-    video_title = get_video_title()
-    video_check = check_video_exists(video_title)
+    # video_title = get_video_title()
+    
 
     audio_info = download_audio()
+    video_check = check_video_exists(audio_info)
     segments = split_audio(audio_info)
     transcribed_segments = transcribe_segment.expand(segment=segments)
     uploaded_segments = upload_to_gcs.expand(transcription=transcribed_segments)
     uploaded_transcription_path = upload_full_transcription_to_gcs(uploaded_segments)
 
-    install_npm_package >> video_title >> video_check >> audio_info >> segments
+    install_npm_package >> audio_info >> video_check >> segments
     uploaded_transcription_path >> add_transcription_to_bq
 
 
