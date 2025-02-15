@@ -1,3 +1,4 @@
+default_stages: [commit, push]
 exclude: ^tests/resources/
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

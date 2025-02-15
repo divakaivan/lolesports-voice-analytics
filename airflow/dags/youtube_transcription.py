@@ -301,7 +301,7 @@ def youtube_transcription():
         schema_fields=get_raw_audio_bq_schema(),
     )
 
-    # video_title = get_video_title() 
+    # video_title = get_video_title()
 
     audio_info = download_audio()
     video_check = check_video_exists(audio_info)
