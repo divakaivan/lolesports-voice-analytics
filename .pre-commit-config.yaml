@@ -7,9 +7,10 @@ repos:
       - id: check-json
       - id: check-toml
       - id: check-yaml
-        # exclude: (?x)^(src/make_api/resources.yaml)$
       - id: end-of-file-fixer
+        exclude: (?x)^dbt_models/.*
       - id: trailing-whitespace
+        exclude: (?x)^dbt_models/.*
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.9
     hooks:

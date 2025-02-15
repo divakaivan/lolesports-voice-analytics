@@ -79,6 +79,3 @@ By leveraging these publicly available datasets, we can create AI-powered soluti
 ## **Success Metrics**
 
 TODO
-
-
-
