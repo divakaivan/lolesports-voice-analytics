@@ -73,18 +73,17 @@ def youtube_transcription():
         """
         video_url = params["yt_video_url"]
         logger.info(f"Downloading audio for video: {video_url}")
-        list_of_clients = ['WEB', 'WEB_SAFARI', 'ANDROID', 'ANDROID_MUSIC', 'ANDROID_CREATOR', 'ANDROID_VR', 'ANDROID_PRODUCER', 'ANDROID_TESTSUITE', 'IOS', 'IOS_MUSIC', 'IOS_CREATOR', 'MWEB', 'TV', 'TV_EMBED', 'MEDIA_CONNECT']
-        from urllib.error import HTTPError
+        list_of_clients = ['WEB', 'WEB_EMBED', 'WEB_MUSIC', 'WEB_CREATOR', 'WEB_SAFARI', 'ANDROID', 'ANDROID_MUSIC', 'ANDROID_CREATOR', 'ANDROID_VR', 'ANDROID_PRODUCER', 'ANDROID_TESTSUITE', 'IOS', 'IOS_MUSIC', 'IOS_CREATOR', 'MWEB', 'TV', 'TV_EMBED', 'MEDIA_CONNECT']
         for client in list_of_clients:
             try:
                 print('Trying client: ' + client)
-                yt = YouTube(params['yt_video_url'], client=client)
-            except HTTPError as e:
-                print(f'HTTP Error {e.code}: {e.reason} - Failed client: {client}', exc_info=True)
-            except Exception as e:
-                print(f'Failed client: {client} with Error: {e}', exc_info=True)
-        video = yt.streams.filter(only_audio=True).first()
-        output_path = video.download(filename="audio.mp4")
+                yt = YouTube(params['yt_video_url'])
+                video = yt.streams.get_audio_only()#filter(only_audio=True).first()
+                output_path = video.download(filename="audio.mp4")
+            except:
+                error_type, e, error_traceback = sys.exc_info()
+                print(f'Failed client: {client} with Error: {e}\n\n\n\n')
+        
         logger.info(f"Downloaded full audio to {output_path}")
         return {
             "audio_path": output_path,
