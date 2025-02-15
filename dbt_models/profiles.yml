@@ -4,8 +4,18 @@ default:
     bigquery:
       type: bigquery
       method: service-account-json
-      keyfile_json: "{{ env_var('GCP_SERVICE_ACCOUNT_KEY') }}"
       project: "{{ env_var('GCP_PROJECT_ID') }}"
       schema: "lolesports_voice_analytics"
       location: "US"
       priority: interactive
+      keyfile_json:
+        type: "{{ env_var('type') }}"
+        project_id: "{{ env_var('project_id') }}"
+        private_key_id: "{{ env_var('private_key_id') }}"
+        private_key: "{{ env_var('private_key') }}"
+        client_email: "{{ env_var('client_email') }}"
+        client_id: "{{ env_var('client_id') }}"
+        auth_uri: "{{ env_var('auth_uri') }}"
+        token_uri: "{{ env_var('token_uri') }}"
+        auth_provider_x509_cert_url: "{{ env_var('auth_provider_x509_cert_url') }}"
+        client_x509_cert_url: "{{ env_var('client_x509_cert_url') }}"
