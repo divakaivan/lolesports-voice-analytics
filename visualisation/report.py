@@ -1,7 +1,9 @@
+from collections import Counter
 import streamlit as st
 import pandas as pd
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
+import networkx as nx
 
 #######################
 # Page configuration
@@ -62,11 +64,28 @@ with st.sidebar:
             ].SEGMENT_TITLE.sort_values()
         ],
     )
+    st.markdown("#### Audio Details")
+
+    st.metric(label="Record Count", value=df.shape[0], border=True)
+    st.metric(label="Sample Rate", value=df.SAMPLE_RATE.iloc[0], border=True)
+    st.metric(label="Channels", value=df.CHANNELS.iloc[0], border=True)
+    st.metric(
+        label="Avg Duration (sec)", value=round(df.DURATION.mean(), 2), border=True
+    )
+    st.metric(
+        label="Avg File Size (MB)",
+        value=round(df.SIZE.mean() / (1024 * 1024), 2),
+        border=True,
+    )
 
 
 #######################
 # Helper functions
 def calculate_metrics(input_df, game_id, game_part):
+    """
+    Calculate communication metrics for the game or a segment.
+    """
+
     game_df = input_df[input_df.GAME_ID == game_id]
 
     if game_part == "Full Game":
@@ -146,6 +165,10 @@ def calculate_metrics(input_df, game_id, game_part):
 
 
 def make_word_cloud(input_df, game_id, game_part):
+    """
+    Create a word cloud from the communication text.
+    """
+
     if game_part == "Full Game":
         text = input_df[df.GAME_ID == game_id].TEXT.str.cat(sep=" ")
     else:
@@ -153,7 +176,7 @@ def make_word_cloud(input_df, game_id, game_part):
             (df.GAME_ID == game_id) & (df.SEGMENT_TITLE.str.contains(game_part))
         ].TEXT.str.cat(sep=" ")
 
-    wordcloud = WordCloud(background_color="white", height=500, max_words=300).generate(
+    wordcloud = WordCloud(background_color="white", height=726, max_words=300).generate(
         text
     )
     fig, ax = plt.subplots()
@@ -163,30 +186,122 @@ def make_word_cloud(input_df, game_id, game_part):
     return fig
 
 
+def make_word_network(
+    input_df, game_id, game_part, min_edge_weight=2, top_words_to_exclude=15
+):
+    """
+    Create a network graph of word relationships in the communication.
+    """
+
+    if game_part == "Full Game":
+        text = input_df[input_df.GAME_ID == game_id].TEXT.str.cat(sep=" ")
+    else:
+        text = input_df[
+            (input_df.GAME_ID == game_id)
+            & (input_df.SEGMENT_TITLE.str.contains(game_part))
+        ].TEXT.str.cat(sep=" ")
+
+    words = text.lower().split()
+    stopwords = [
+        "a",
+        "an",
+        "the",
+        "is",
+        "of",
+        "and",
+        "to",
+        "in",
+        "on",
+        "for",
+        "it",
+        "with",
+        "as",
+        "be",
+        "have",
+        "at",
+        "by",
+        "or",
+        "that",
+        "my",
+        "one",
+        "this",
+        "s",
+        "what",
+        "he",
+        "will",
+        "all",
+        "from",
+        "they",
+        "are",
+        "we",
+        "her",
+        "because",
+        "was",
+        "your",
+        "when",
+        "up",
+        "more",
+        "used",
+        "can",
+        "nice",
+        "can.",
+        "nice.",
+        "i",
+        "i'm",
+    ]
+    words = [word for word in words if word not in stopwords]
+    word_counts = Counter(words)
+    words_to_exclude = set(
+        [word for word, _ in word_counts.most_common(top_words_to_exclude)]
+    )
+
+    words = [word for word in words if word not in words_to_exclude][:1250]
+
+    bigrams = list(zip(words[:-1], words[1:]))
+    bigram_counts = Counter(bigrams)
+
+    G = nx.Graph()
+    for bigram, count in bigram_counts.items():
+        if count >= min_edge_weight:
+            G.add_edge(bigram[0], bigram[1], weight=count)
+
+    G.remove_nodes_from(list(nx.isolates(G)))
+    word_counts = Counter(words)
+    node_sizes = [word_counts[node] * 100 for node in G.nodes()]
+    edge_widths = [G[u][v]["weight"] for u, v in G.edges()]
+
+    plt.figure(figsize=(8, 14))
+    pos = nx.spring_layout(G, k=1, iterations=50)
+
+    nx.draw_networkx_nodes(
+        G, pos, node_size=node_sizes, node_color="lightblue", alpha=0.7
+    )
+
+    nx.draw_networkx_edges(G, pos, width=edge_widths, alpha=0.5, edge_color="gray")
+
+    nx.draw_networkx_labels(G, pos, font_size=8, font_weight="bold")
+
+    plt.axis("off")
+    plt.tight_layout()
+
+    return plt.gcf()
+
+
 #######################
 # Dashboard Main Panel
-col = st.columns((1.3, 4.5, 1.7), gap="medium")
+col = st.columns((4.0, 4.0, 1.7), gap="medium")
 
 with col[0]:
-    st.markdown("#### Audio Details")
-
-    st.metric(label="Record Count", value=df.shape[0], border=True)
-    st.metric(label="Sample Rate", value=df.SAMPLE_RATE.iloc[0], border=True)
-    st.metric(label="Channels", value=df.CHANNELS.iloc[0], border=True)
-    st.metric(
-        label="Avg Duration (sec)", value=round(df.DURATION.mean(), 2), border=True
-    )
-    st.metric(
-        label="Avg File Size (MB)",
-        value=round(df.SIZE.mean() / (1024 * 1024), 2),
-        border=True,
-    )
-
-with col[1]:
     st.markdown("#### Word Cloud")
 
     fig = make_word_cloud(df, game_id, game_part)
     st.pyplot(fig)
+
+with col[1]:
+    st.markdown("#### Bigram Network")
+
+    network_fig = make_word_network(df, game_id, game_part)
+    st.pyplot(network_fig)
 
 with col[2]:
     st.markdown("#### Communication Metrics (vs. Avg)")
