@@ -7,7 +7,7 @@ from airflow.providers.google.cloud.transfers.gcs_to_bigquery import (
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.exceptions import AirflowSkipException
 from datetime import datetime, timedelta
-from pytubefix import YouTube
+from pytubefix import YouTube, Channel
 from pydub import AudioSegment
 from pydub.utils import mediainfo
 from include.utils import (
@@ -18,7 +18,9 @@ from include.utils import (
 )
 import whisper
 import json
-from loguru import logger
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dag(
@@ -32,30 +34,69 @@ from loguru import logger
     },
     schedule_interval=None,
     catchup=False,
-    params={
-        "yt_video_url": "https://www.youtube.com/watch?v=4vXsZI8y_6w",
-    },
     tags=["ivan", "youtube", "transcription"],
 )
 def youtube_transcription():
-    # @task # don't use for now
-    # def get_video_title(params: dict) -> str:
-    #     """Get the title of the YouTube video"""
-    #     list_of_clients = ['WEB', 'WEB_EMBED', 'WEB_MUSIC', 'WEB_CREATOR', 'WEB_SAFARI', 'ANDROID', 'ANDROID_MUSIC', 'ANDROID_CREATOR', 'ANDROID_VR', 'ANDROID_PRODUCER', 'ANDROID_TESTSUITE', 'IOS', 'IOS_MUSIC', 'IOS_CREATOR', 'MWEB', 'TV', 'TV_EMBED', 'MEDIA_CONNECT']
+    @task
+    def check_if_video_already_processed() -> bool:
+        """
+        Check if the video has already been processed by querying BigQuery.
+        Returns True if video exists, False otherwise.
+        """
+        ch = Channel("https://www.youtube.com/@Nemesis2_lol")
+        if ch.playlists[0].title != "Scrims":
+            logger.error(f"Check playlist title: {ch.playlists[0].title}")
+            raise AirflowSkipException(f"Check playlist title: {ch.playlists[0].title}")
+        video_title = ch.playlists[0].videos[0].title  # latest scrim video title
+        bq_hook = BigQueryHook()
+        sql = f"""
+            SELECT COUNT(*) as count
+            FROM lolesports_voice_analytics.raw_data_from_video
+            WHERE yt_video_title = '{video_title}'
+        """
+        logger.debug(f"Scheduling SQL: {sql}")
+        result = bq_hook.get_first(sql)
+        logger.debug(f"Result: {result}")
+        count = result[0] if result else 0
 
-    #     for client in list_of_clients:
-    #         try:
-    #             yt = YouTube(params['yt_video_url'], client=client)
-    #             return clean_yt_title(yt.title)
-    #         except:
-    #             error_type, e, error_traceback = sys.exc_info()
-    #             print(f'Failed client: {client} with Error: {e}\n\n\n\n')
+        if count > 0:
+            logger.error(f"Video {video_title} has already been processed")
+            raise AirflowSkipException(
+                f"Video {video_title} has already been processed"
+            )
 
-    # yt = YouTube(dag.params['yt_video_url'], 'WEB')
-    # return clean_yt_title(yt.title)
+        logger.debug(f"Video {video_title} has not been processed yet")
+        return ch.playlists[0].video_urls[0]
 
     @task
-    def download_audio(params: dict) -> dict:
+    def data_quality_check(ti) -> bool:
+        """
+        Run a data quality check on the video details before processing
+        """
+
+        video_url = ti.xcom_pull(task_ids="check_if_video_already_processed")
+        logger.info(f"Downloading audio for video: {video_url}")
+
+        yt = YouTube(video_url)
+        if yt.length < 3600:
+            logger.error(
+                f"Video {video_url} is less than 1 hour long. Skipping processing."
+            )
+            raise AirflowSkipException(
+                f"Video {video_url} is less than 1 hour long. Skipping processing."
+            )
+        if not any(chapter.title.startswith("Game ") for chapter in yt.chapters):
+            logger.error(
+                f"Video {video_url} does not contain any game chapters. Skipping processing."
+            )
+            raise AirflowSkipException(
+                f"Video {video_url} does not contain any game chapters. Skipping processing."
+            )
+
+        return True
+
+    @task
+    def download_audio(ti) -> dict:
         """
         Fetches a YouTube video from the given URL, downloads its audio as an MP4 file,
         and extracts chapter details including title, start time, and end time.
@@ -63,10 +104,10 @@ def youtube_transcription():
         Returns:
             dict: A dictionary containing the path to the downloaded audio file and chapter details.
         """
-        video_url = params["yt_video_url"]
+        video_url = ti.xcom_pull(task_ids="check_if_video_already_processed")
         logger.info(f"Downloading audio for video: {video_url}")
 
-        yt = YouTube(params["yt_video_url"])
+        yt = YouTube(video_url)
         video = yt.streams.filter(only_audio=True).first()
         output_path = video.download(filename="audio.mp4")
         logger.info(f"Downloaded full audio to {output_path}")
@@ -86,33 +127,6 @@ def youtube_transcription():
                 )
             ],
         }
-
-    @task
-    def check_video_exists(audio_file_info: dict) -> bool:
-        """
-        Check if the video has already been processed by querying BigQuery.
-        Returns True if video exists, False otherwise.
-        """
-        video_title = audio_file_info["yt_video_title"]
-        bq_hook = BigQueryHook()
-        sql = f"""
-            SELECT COUNT(*) as count
-            FROM lolesports_voice_analytics.raw_data_from_video
-            WHERE yt_video_title = '{video_title}'
-        """
-        logger.debug(f"Scheduling SQL: {sql}")
-        result = bq_hook.get_first(sql)
-        logger.debug(f"Result: {result}")
-        count = result[0] if result else 0
-
-        if count > 0:
-            logger.error(f"Video {video_title} has already been processed")
-            raise AirflowSkipException(
-                f"Video {video_title} has already been processed"
-            )
-
-        logger.debug(f"Video {video_title} has not been processed yet")
-        return False
 
     @task
     def split_audio(audio_info: dict) -> list[dict]:
@@ -170,43 +184,37 @@ def youtube_transcription():
 
         return segments
 
-    @task(max_active_tis_per_dag=4)
-    def transcribe_segment(segment: dict) -> dict:
+    @task
+    def transcribe_segments(segments: list[dict]) -> list[dict]:
         """
-        Uses a Whisper model to transcribe an audio segment.
+        Uses a Whisper model to transcribe audio segments.
 
         Args:
-            segment (dict): A dictionary containing metadata for the audio segment.
+            segment (list[dict]): A list of dictionaries containing metadata for the audio segments.
 
         Returns:
-            dict: The input dictionary with extra keys added for the transcription and GPT info.
+            list[dict]: The input list with extra keys added for the transcriptions.
         """
 
-        logger.info(f"Transcribing segment: {segment['title']} ({segment['filename']})")
+        logger.info("Transcribing audio segments")
         whisper_model = whisper.load_model("tiny")
-        result = whisper_model.transcribe(segment["filename"])
-        segment["text"] = result["text"]
-        gpt_summary_dict = get_gpt_summary(result["text"])
-        segment["gpt_clarity"] = gpt_summary_dict["clarity"]
-        segment["gpt_intensity"] = gpt_summary_dict["intensity"]
-        segment["gpt_summary"] = gpt_summary_dict["summary"]
-        logger.info(f"Transcribed segment: {segment['title']} ({segment['filename']})")
-
-        # check keys match with required_fields
-        required_fields = set(
-            i["name"]
-            for i in get_raw_audio_bq_schema()
-            if i["name"] != "ingestion_timestamp"
-        )
-        if set(segment.keys()) != required_fields:
-            logger.error(
-                f"Missing fields in transcription: {segment}. Required fields: {required_fields}"
+        enhanced_segments = []
+        for segment in segments:
+            logger.info(
+                f"Transcribing segment: {segment['title']} ({segment['filename']})"
             )
-            raise ValueError(
-                f"Missing fields in transcription: {segment.keys()}. Required fields: {required_fields}"
+            result = whisper_model.transcribe(segment["filename"])
+            segment["text"] = result["text"]
+            gpt_summary_dict = get_gpt_summary(result["text"])
+            segment["gpt_clarity"] = gpt_summary_dict["clarity"]
+            segment["gpt_intensity"] = gpt_summary_dict["intensity"]
+            segment["gpt_summary"] = gpt_summary_dict["summary"]
+            logger.info(
+                f"Transcribed segment: {segment['title']} ({segment['filename']})"
             )
+            enhanced_segments.append(segment)
 
-        return segment
+        return enhanced_segments
 
     @task(max_active_tis_per_dag=4)
     def upload_to_gcs(transcription: dict) -> dict:
@@ -302,15 +310,16 @@ def youtube_transcription():
     )
 
     # video_title = get_video_title()
+    check_video_processed = check_if_video_already_processed()
+    check_video_data_quality = data_quality_check()
+    get_audio_info = download_audio()
 
-    audio_info = download_audio()
-    video_check = check_video_exists(audio_info)
-    segments = split_audio(audio_info)
-    transcribed_segments = transcribe_segment.expand(segment=segments)
+    segments = split_audio(get_audio_info)
+    transcribed_segments = transcribe_segments(segments)
     uploaded_segments = upload_to_gcs.expand(transcription=transcribed_segments)
     uploaded_transcription_path = upload_full_transcription_to_gcs(uploaded_segments)
 
-    audio_info >> video_check >> segments
+    check_video_processed >> check_video_data_quality >> get_audio_info >> segments
     uploaded_transcription_path >> add_transcription_to_bq
 
 
