@@ -1,6 +1,8 @@
-name: "dbt build and update models"
+name: "dbt build and update models video models"
 
 on:
+  schedule:
+    - cron: "@daily"
   workflow_dispatch:
 
 jobs:
@@ -54,4 +56,4 @@ jobs:
       - name: "Step 06 - Run dbt build"
         working-directory: ./dbt_models
         run: |
-          dbt build
+          dbt build --select STG_RAW_DATA_FROM_VIDEO+
