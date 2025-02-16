@@ -2,7 +2,10 @@ import json
 import requests
 from openai import OpenAI
 from bs4 import BeautifulSoup
-from loguru import logger
+from airflow.exceptions import AirflowSkipException
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_raw_audio_bq_schema() -> list[dict]:
@@ -216,7 +219,7 @@ def clean_yt_title(title: str) -> str:
         raise ValueError("Title cannot be empty")
 
     title = title.strip()
-    title = "".join(e for e in title if e.isalnum())[:15]
+    title = "".join(e for e in title if e.isalnum())
     logger.debug(f"Cleaned YouTube video title: {title}")
     return title
 
@@ -280,7 +283,7 @@ def scrape_team_data(team_name: str) -> str:
     table = soup.find("table", {"class": "wikitable"})
 
     if table is None:
-        raise ValueError(f"Could not find team members table for {team_name}")
+        raise AirflowSkipException(f"Could not find team members table for {team_name}")
 
     rows = []
     for tr in table.find_all("tr")[1:]:
@@ -294,6 +297,11 @@ def scrape_team_data(team_name: str) -> str:
                 f"TRUE as is_current, CURRENT_TIMESTAMP() as created_at, "
                 f"CURRENT_TIMESTAMP() as updated_at)"
             )
+
+    if len(rows) < 5:
+        raise AirflowSkipException(
+            f"Could not find enough team members for {team_name}"
+        )
 
     values = ",\n                ".join(rows)
 
