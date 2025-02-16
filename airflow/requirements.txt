@@ -4,13 +4,10 @@ pydub
 ffmpeg
 openai-whisper
 ffmpeg-python
-apache-airflow-providers-google
-apache-airflow[google]
+apache-airflow-providers-google==10.24.0
 beautifulsoup4
 requests
 lxml
 html5lib
 openai
 loguru
-dbt-core
-dbt-bigquery
