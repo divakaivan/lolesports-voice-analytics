@@ -199,6 +199,7 @@ models:
           - not_empty
 
 sources:
+  - name: SRC
     database: dataengcamp-427114
     schema: lolesports_voice_analytics
     tables:
