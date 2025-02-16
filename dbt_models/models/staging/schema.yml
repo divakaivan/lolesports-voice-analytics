@@ -199,7 +199,6 @@ models:
           - not_empty
 
 sources:
-  - name: staging
     database: dataengcamp-427114
     schema: lolesports_voice_analytics
     tables:
