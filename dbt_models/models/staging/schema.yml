@@ -110,7 +110,7 @@ models:
           - not_null
           - not_empty
           - relationships:
-              to: source('staging', 'team_members')
+              to: source('SRC', 'team_members')
               field: team
       - name: TEXT
         data_type: string
@@ -299,7 +299,7 @@ sources:
             tests:
               - not_null
               - relationships:
-                  to: source('staging', 'team_members')
+                  to: source('SRC', 'team_members')
                   field: team
           - name: text
             data_type: string
