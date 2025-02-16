@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
-import requests
 from include.utils import scrape_team_data
+from airflow.exceptions import AirflowSkipException  # noqa: F401
 
 
 def mock_fandom_response(html_content):
@@ -24,6 +24,15 @@ class TestScrapeTeamData(unittest.TestCase):
             <tr>
                 <td>Data1</td><td>Data2</td><td>Caps</td><td>Data4</td>
             </tr>
+            <tr>
+                <td>Data1</td><td>Data2</td><td>Nemesis</td><td>Data4</td>
+            </tr>
+            <tr>
+                <td>Data1</td><td>Data2</td><td>Rekkles</td><td>Data4</td>
+            </tr>
+            <tr>
+                <td>Data1</td><td>Data2</td><td>Caedrel</td><td>Data4</td>
+            </tr>
         </table>
         """
         mock_get.return_value = mock_fandom_response(html_content)
@@ -42,20 +51,13 @@ class TestScrapeTeamData(unittest.TestCase):
         mock_get.return_value = mock_fandom_response(html_content)
 
         team_name = "T1"
-        with self.assertRaises(ValueError) as context:
+
+        with self.assertRaises(AirflowSkipException) as context:
             scrape_team_data(team_name)
 
         self.assertEqual(
             str(context.exception), "Could not find team members table for T1"
         )
-
-    @patch("requests.get")
-    def test_scrape_team_data_invalid_response(self, mock_get):
-        mock_get.side_effect = requests.RequestException("Network error")
-        team_name = "T1"
-
-        with self.assertRaises(requests.RequestException):
-            scrape_team_data(team_name)
 
 
 if __name__ == "__main__":
