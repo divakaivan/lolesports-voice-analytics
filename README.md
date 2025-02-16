@@ -1,4 +1,4 @@
-## **LoL Esports Voice Analytics**
+# **LoL Esports Voice Analytics**
 
 ## **Problem Statement**
 
