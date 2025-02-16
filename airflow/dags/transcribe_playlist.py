@@ -1,8 +1,3 @@
-"""
-Transcribe a YouTube playlist of League of Legends.
-Requies high memory and CPU to utilise mapped tasks.
-"""
-
 import os
 from airflow.decorators import dag, task
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
@@ -30,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 @dag(
     dag_id="transcribe_playlist",
+    description="Transcribe a YouTube playlist of scrim videos",
     default_args={
         "owner": "airflow",
         "depends_on_past": False,

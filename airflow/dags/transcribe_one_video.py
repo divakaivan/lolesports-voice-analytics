@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 @dag(
     dag_id="transcribe_one_video",
+    description="Transcribes a single YouTube video into segments and uploads the transcriptions to GCS and BigQuery",
     default_args={
         "owner": "airflow",
         "depends_on_past": False,

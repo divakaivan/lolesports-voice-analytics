@@ -24,15 +24,16 @@ logger = logging.getLogger(__name__)
 
 
 @dag(
-    dag_id="youtube_transcription_dag",
+    dag_id="daily_scrim_transcription",
+    description="A DAG to transcribe the latest Los Ratones scrims video",
     default_args={
         "owner": "airflow",
         "depends_on_past": False,
-        "start_date": datetime(2024, 2, 13),
+        "start_date": datetime(2024, 2, 16),
         "retries": 1,
         "retry_delay": timedelta(minutes=1),
     },
-    schedule_interval=None,
+    schedule_interval="@daily",
     catchup=False,
     tags=["ivan", "youtube", "transcription"],
 )

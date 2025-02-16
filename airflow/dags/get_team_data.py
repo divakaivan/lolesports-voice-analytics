@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from include.utils import scrape_team_data
 
 with DAG(
-    "lol_team_scraper",
+    dag_id="lol_team_scraper",
     default_args={
         "owner": "airflow",
         "depends_on_past": False,
