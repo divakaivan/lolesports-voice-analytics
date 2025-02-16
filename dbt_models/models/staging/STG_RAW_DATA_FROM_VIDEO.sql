@@ -28,7 +28,7 @@ src_data as (
         END as GPT_SUMMARY,
         'SRC.RAW_DATA_FROM_VIDEO' as RECORD_SOURCE
         
-    FROM {{ source("staging", "raw_data_from_video") }}
+    FROM {{ source("SRC", "raw_data_from_video") }}
 ),
 
 final as (

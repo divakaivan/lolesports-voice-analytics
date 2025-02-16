@@ -10,7 +10,7 @@ src_data as (
         updated_at as UPDATED_AT,
         'SRC.TEAM_MEMBERS' as RECORD_SOURCE
         
-    FROM {{ source("staging", "team_members") }}
+    FROM {{ source("SRC", "team_members") }}
 ),
 
 final as (
