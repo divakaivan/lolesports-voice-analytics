@@ -1,11 +1,22 @@
 ## **LoL Esports Voice Analytics**
 
+## **Problem Statement**
+
+In League of Legends esports (LoLEsports), communicatio audio is private - kept by teams and Riot Games, limiting analysis to structured data like in-game stats. This was up until recently when a newly formed team started sharing all their practice data to the public. AI-driven speech analysis can now extract insights from unstructured audio, helping teams assess shot-calling, efficiency, and strategy.
+
+## **Opportunity**
+
+Los Ratones, a recently formed 2nd-tier EMEA team, is now publicly sharing full in-game voice communications on YouTube, which offers a new opportunity for open-source development of AI tools to analyze team communication, benefiting teams, analysts, and fans alike.
+
 ### **Primary Goals**
 
-- Setting up a pipeline to extract and transform raw audio data from YouTube in a cost-effective (free) way
-- Analysing audio data from an esports team's practice to gain insight and provide feedback on communication styles
-- Serve as an for Esports teams to set up their own pipelines
-- Share audio data from a multi-speaker, dynamic environment to aid in the development of speech diarization models for such settings
+- Develop visualizations and analytics that uncover communication patterns and dynamics, providing Los Ratones with actionable insights to enhance their gameplay
+- Analyze audio from esports practices to pinpoint strengths and areas for improvement in team communication, enabling targeted feedback to refine decision-making and in-game strategies
+
+**Secondary Goals**
+
+- Contributing to the open source speech AI community by sharing a pipeline for audio data from a multi-speaker, dynamic environment to aid in the development of speech diarization models for such settings
+- Setting up a pipeline to extract and transform raw audio data from YouTube and serve as a guideline for Esports teams to set up their own pipelines
 
 ### **Conceptual Data Model**
 
@@ -18,92 +29,56 @@
 
 ### **Pipelines**
 
-**Extract & Load Raw Data**
+**Extract & Load Data**
 
-- Videos from [Nemesis 2](https://www.youtube.com/@Nemesis2_lol) - a youtube channel that uploads all scrims (practice games) of Los Ratones
-- Team information ingestion from [LoL Fandom](https://lol.fandom.com/wiki/League_of_Legends_Esports_Wiki) - the Wikipedia for anything League of Legends
-- Data quality checks:
+- Audio files (.wav) and transcription (.json) are uploaded to Google Cloud Storage, one big table including all metadata about a video, its content, files, transcriptions is upsert into BigQuery
+- Team data is ingested directly into BigQuery
+- Data quality checks before loading:
     - video length check (e.g., scrim videos are usually > 1.5hrs)
     - checking there are 'Chapters (Games)' in the description
     - prevent double-processing
     - schema validation check before upload to the data lake
 
+All Airflow DAGs:
+
+![dag-view](project_info/dag_view.png)
+
+Video processing DAG:
+
+![video-dag](project_info/video_dag.png)
+
+Team scraping DAG:
+
+![team-dag](project_info/team_dag.png)
+
 **Data Transformation**
 
 Using dbt, data goes through a transformation and DQ check pipeline
 
-![image](dbt_image)
+![image](project_info/dbt_lineage.png)
+
+- Staging (STG_) data mimics the source data 99% (e.g., column are renamed)
+- Refined (REF_) data is where business logic is applied (e.g., create game-based statistics)
+- Marts (MART_) data is where data is split into different entities following the conceptial data model
+
+Data quality tests (not null, not empty, data types, value range) are applied at every step.
+
+### Key Metrics of Interest
+
+| **Metric**                     | **Definition**                                                                                                                                                           | **Scale/Range**                                                                                      | **Source/Notes**                                                                                                           |
+|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| Communication Clarity          | How clear the communication was during the game, indicating ease of understanding.                                                                                       | 1 (low) to 5 (high)                                                                                  | AI-generated score (e.g., GPT_CLARITY)                                                                                     |
+| Communication Intensity        | The intensity of the emotion expressed during communication in the game.                                                                                                 | 1 (low) to 5 (high)                                                                                  | AI-generated score (e.g., GPT_INTENSITY)                                                                                   |
+| Word Count                     | The number of words spoken during a game, reflecting the volume of communication (e.g., win vs defeat scenarios).                                                         | Integer count (e.g., 1500 words)                                                                     | Derived from transcript analysis (via tokenization and adjusting for average token length)                                 |
+| Top Bigrams                    | The most frequent two-word combinations extracted from the transcript, highlighting key phrases or recurring themes.                                                      | List of bigrams with frequency counts (e.g., "game over": 15)                                          | Extracted using NLP techniques (bigram frequency analysis, stop-word filtering, and significance checks)                   |
+| Temporal Cross-Game Variation  | Compares key communication metrics (e.g., clarity, intensity) within a predefined time frame across multiple games. This metric assesses the consistency or variability in behavior between games. | 1 (minimal variation/high consistency) to 5 (high variation/low consistency)                         | E.g. comparing the 1st five minutes of a game with another game's first five minutes |
 
 
-Include:
-
-Schemas
-Screenshots (ETL runs, quality checks, dashboards)
-DAG and data model diagrams
-Metrics and data quality checks
 
 
----
 
+TODO:
 
-## **Write Up**
-
-Document the project in a clear and concise way:
-
-Purpose of the project and expected outputs
 Dataset and technology choices, with justifications
 Steps followed and challenges faced
 Possible future enhancements
-
-
-## Criteria 3: Data Quality Checks
-
-Include at least 2 data quality checks for each data source.
-
-## **Problem Statement**
-
-In League of Legends esports (LoLEsports), team communication remains private, with practice sessions and in-game voice comms restricted to teams and Riot Games (the game's developer). As a result, teams primarily rely on structured data—such as in-game statistics—to analyze performance, leaving a critical gap in understanding real-time communication and decision-making.
-
-However, team communication is one of the most crucial factors in competitive play. Recent advancements in AI-driven speech analysis now make it possible to extract insights from unstructured audio data, helping teams better understand coordination, shot-calling efficiency, and strategic adaptation. Despite this potential, most teams lack the resources to develop AI-powered tools for audio analysis.
-
-## **Advancing Speech AI for Esports**
-
-While modern speech AI models perform well on conversations with 1-3 speakers, competitive gaming presents a unique challenge due to its fast-paced, multi-speaker environment, with at least five players communicating simultaneously. Current models struggle with overlapping speech, speaker diarization, and noisy environments.
-
-By developing a structured pipeline for audio extraction and analysis, this project also serves as a template for improving speaker diarization models, contributing to the broader advancement of AI multi-speaker environments.
-
-## **Opportunity**
-
-Recently, Los Ratones, a team in the 2nd tier of the Europe, Middle East, and Africa (EMEA) league, has started publicly sharing full in-game voice communications on Twitch and YouTube. This presents a unique opportunity for the open-source community to develop tools that analyze team communication for the first time.
-
-By leveraging these publicly available datasets, we can create AI-powered solutions that help teams, analysts, and fans better understand in-game communication.
-
-## **Key stakeholders**
-
-- **Players & Coaches:** To improve player communication, reduce redundant callouts, and optimize team synergy.
-- **Analysts & Broadcasters:** To generate player/team-specific insights and summaries.
-- **Fans & Content Creators:** To receive more information about their favourite player/team.
-
----
-
-## **Challenges & Data Considerations**
-
-### **Data Quality & Preprocessing Issues**
-- **Speech-to-Text Accuracy:** Errors in transcriptions due to accents, background noise, or overlapping speech.
-- **Speaker Identification:** Separating individual voices from team communication audio is challenging.
-- **Incomplete Data:** Some videos may have missing team/player info or unclear audio.
-
-### **Data Volume & API Rate Limits**
-- **YouTube API:** Enforces daily request limits, requiring batching or rate-limiting strategies.
-- **Fandom.com Scraping:** Pages may change in structure, needing robust selectors and monitoring.
-- **Storage & Processing:** Weekly collection of large audio files requires optimized storage and processing pipelines.
-
-### **Pipeline Frequency**
-- **Weekly automatic ingestion for new games.**
-- **On-demand processing for specific videos.**
-
----
-
-## **Success Metrics**
-
-TODO
