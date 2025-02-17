@@ -14,6 +14,12 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+if "words_to_exclude_bigram" not in st.session_state:
+    st.session_state["words_to_exclude_bigram"] = 10
+if "top_n_bigram" not in st.session_state:
+    st.session_state["top_n_bigram"] = 1000
+if "top_n_word_cloud" not in st.session_state:
+    st.session_state["top_n_word_cloud"] = 1000
 #######################
 # Load data
 
@@ -164,7 +170,7 @@ def calculate_metrics(input_df, game_id, game_part):
         return segment_metrics, full_game_metrics, deltas
 
 
-def make_word_cloud(input_df, game_id, game_part):
+def make_word_cloud(input_df, game_id, game_part, top_n=300):
     """
     Create a word cloud from the communication text.
     """
@@ -176,9 +182,9 @@ def make_word_cloud(input_df, game_id, game_part):
             (df.GAME_ID == game_id) & (df.SEGMENT_TITLE.str.contains(game_part))
         ].TEXT.str.cat(sep=" ")
 
-    wordcloud = WordCloud(background_color="white", height=726, max_words=300).generate(
-        text
-    )
+    wordcloud = WordCloud(
+        background_color="white", height=726, max_words=top_n
+    ).generate(text)
     fig, ax = plt.subplots()
     ax.imshow(wordcloud, interpolation="bilinear")
     ax.axis("off")
@@ -187,7 +193,7 @@ def make_word_cloud(input_df, game_id, game_part):
 
 
 def make_word_network(
-    input_df, game_id, game_part, min_edge_weight=2, top_words_to_exclude=15
+    input_df, game_id, game_part, min_edge_weight=2, top_words_to_exclude=0, top_n=1000
 ):
     """
     Create a network graph of word relationships in the communication.
@@ -247,7 +253,6 @@ def make_word_network(
         "can.",
         "nice.",
         "i",
-        "i'm",
     ]
     words = [word for word in words if word not in stopwords]
     word_counts = Counter(words)
@@ -255,7 +260,7 @@ def make_word_network(
         [word for word, _ in word_counts.most_common(top_words_to_exclude)]
     )
 
-    words = [word for word in words if word not in words_to_exclude][:1250]
+    words = [word for word in words if word not in words_to_exclude][:top_n]
 
     bigrams = list(zip(words[:-1], words[1:]))
     bigram_counts = Counter(bigrams)
@@ -292,15 +297,63 @@ def make_word_network(
 col = st.columns((4.0, 4.0, 1.7), gap="medium")
 
 with col[0]:
-    st.markdown("#### Word Cloud")
+    inner_col = st.columns((1, 1))
+    with inner_col[0]:
+        st.markdown("#### Word Cloud")
+    with inner_col[1]:
 
-    fig = make_word_cloud(df, game_id, game_part)
+        @st.dialog("Word Cloud Settings")
+        def word_cloud_settings():
+            top_n_word_cloud = st.number_input(
+                "Words to Include",
+                value=st.session_state["top_n_word_cloud"],
+                placeholder="Type a number...",
+            )
+            if st.button("Submit"):
+                st.session_state["top_n_word_cloud"] = top_n_word_cloud
+                st.rerun()
+
+        if st.button(":material/settings:", key="word_cloud_settings"):
+            word_cloud_settings()
+
+    fig = make_word_cloud(
+        df, game_id, game_part, top_n=st.session_state["top_n_word_cloud"]
+    )
     st.pyplot(fig)
 
 with col[1]:
-    st.markdown("#### Bigram Network")
+    inner_col = st.columns((1, 1))
+    with inner_col[0]:
+        st.markdown("#### Bigram Graph")
+    with inner_col[1]:
 
-    network_fig = make_word_network(df, game_id, game_part)
+        @st.dialog("Bigram Network Graph Settings")
+        def bigram_settings():
+            words_to_exclude_bigram = st.number_input(
+                "Exclude Top N Words:",
+                value=st.session_state["words_to_exclude_bigram"],
+                placeholder="Type a number...",
+            )
+            top_n_bigram = st.number_input(
+                "Words to Include",
+                value=st.session_state["top_n_bigram"],
+                placeholder="Type a number...",
+            )
+            if st.button("Submit"):
+                st.session_state["words_to_exclude_bigram"] = words_to_exclude_bigram
+                st.session_state["top_n_bigram"] = top_n_bigram
+                st.rerun()
+
+        if st.button(":material/settings:", key="bigram_settings"):
+            bigram_settings()
+
+    network_fig = make_word_network(
+        df,
+        game_id,
+        game_part,
+        top_words_to_exclude=st.session_state["words_to_exclude_bigram"],
+        top_n=st.session_state["top_n_bigram"],
+    )
     st.pyplot(network_fig)
 
 with col[2]:
