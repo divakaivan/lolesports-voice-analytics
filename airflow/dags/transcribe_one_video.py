@@ -1,3 +1,7 @@
+"""
+Copy of daily_scrim_transcription but just for 1 video passed by the user.
+"""
+
 import os
 from airflow.decorators import dag, task
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
