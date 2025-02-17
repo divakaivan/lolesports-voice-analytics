@@ -29,7 +29,7 @@ Los Ratones, a recently formed 2nd-tier EMEA team, is now publicly sharing full 
 
 ## **Datasets**
 
-- Los Ratones game videos are taken from [Nemesis 2](https://www.youtube.com/@Nemesis2_lol/playlists) - a youtube channel run by one of the players. Scrim videos are uploaded in the Scrims playlist, usually 3-4 a week. Each video contains 4-6 games.
+- Los Ratones game videos are taken from [Nemesis 2](https://www.youtube.com/@Nemesis2_lol/playlists) - a youtube channel run by one of the players. Scrim videos are uploaded in the Scrims playlist, usually 3-4 a week. Each video contains 4-6 games. As of the time of writing there are 33 scrim videos available. 
 - Team information is web scraped from [LoL Fandom](https://lol.fandom.com/wiki/League_of_Legends_Esports_Wiki) - a Wikipedia website for everything related to LoL.
 
 As mentioned, this is the first *public* source of such data so the Nemesis 2 youtube channel is the only place available to obtain such data for *any* team. The LoL Fandom website is the most popular general LoL information website, it is well-maintained and reliable for team information.
@@ -53,6 +53,7 @@ The technology choices are a mix of new challenges, ease of setup, and comfort.
 
 - Audio files (.wav) and transcription (.json) are uploaded to Google Cloud Storage, and one big table including all metadata about the ingested video, its content, audio files references, transcriptions is upsert into BigQuery
 - Team data is ingested directly into BigQuery
+- After development, the data from 4 videos was ingested and processed due to time and fund limitations
 - Data quality checks before loading:
     - video length check (e.g., scrim videos are usually > 1.5hrs)
     - checking there are 'Chapters (Games)' in the description
@@ -108,6 +109,8 @@ Data quality tests (not null, not empty, data types, value range) are applied at
 ## [**Dashboard**](https://lolesports-voice-analytics.streamlit.app/)
 
 ![dashboard](project_info/dashboard.png)
+
+After development, I ingested only 4 of the 33 (as of time of writing) videos to show proof of concept and create the dashboard. 
 
 ## **Challenges**
 
