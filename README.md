@@ -122,4 +122,5 @@ After development, I ingested only 4 of the 33 (as of time of writing) videos to
 
 - The pytube package bot issue can be avoided by using a proxy server. In the future setting up a proxy through some 3rd party provider could help avoid the 'bot detected' errors when running from cloud environments
 - Use a more powerful machine for the Airflow deployment so that we can load a bigger model. Or use the model through API calls
+- Improve on the 'clarity', and 'intensity' metrics by using models specifically trained on that. Also use techniques like speech emotion recognition to get insights directly from the audio data.
 - I wanted to set up player-specific communication tendencies, and tried `pyannote/speaker-diarization-3.1` from HuggingFace during development. However, given the dynamic, multi-speaker nature of the audio the model did not perform well. In the future, I hope to use audio data as in this project to further improve speaker diarization models
