@@ -20,7 +20,7 @@ Los Ratones, a recently formed 2nd-tier EMEA team, is now publicly sharing full 
 
 ## **Conceptual Data Model**
 
-![conceptial-model](project_info/conceptial_model.svg)
+![conceptial-model](project_info/conceptial_model.svg) 
 
 - **Audio:** Extracted from videos, storing technical properties and linked to game transcriptions for further analysis.
 - **Game Transcription:** Includes AI-generated text derived from audio, summaries, clarity levels, and hype metrics.
