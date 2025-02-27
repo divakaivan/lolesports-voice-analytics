@@ -36,7 +36,13 @@ As mentioned, this is the first *public* source of such data so the Nemesis 2 yo
 
 ## **Technology**
 
+**Overview**
+
 ![project-flow](project_info/project_flow.png)
+
+**Detailed**
+
+![detailed-project-flow](project_info/detailed_project_flow.png)
 
 The technology choices are a mix of new challenges, ease of setup, and comfort.
 
