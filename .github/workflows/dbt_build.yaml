@@ -1,8 +1,6 @@
 name: "dbt build and update models video models"
 
 on:
-  schedule:
-    - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
